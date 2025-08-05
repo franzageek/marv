@@ -111,7 +111,7 @@ impl RiscV32 {
         while self.status {
             let instr: u32 = self.mem.read_word(self.regs.pc as usize);
             let decoded: RV32IInstruction = instruction::rv32_decode(instr);
-            println!("[PC: <0x{:08X}>] got {:?}", self.regs.pc, decoded);
+            println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded {
                 RV32IInstruction::Lui(rd, imm) => {
                     self.regs.write(rd, imm as u32);
