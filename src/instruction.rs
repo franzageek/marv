@@ -1,5 +1,12 @@
-pub enum RV32IInstruction {
+#[derive(Debug)]
+pub enum RV32Instruction {
     Unknown,
+    RV32I(RV32IInstruction),
+    RV32M(RV32MInstruction),
+}
+
+
+pub enum RV32IInstruction {
     Lui(u8, i32),
     Auipc(u8, i32),
     Jal(u8, i32),
@@ -47,7 +54,7 @@ pub enum RV32IInstruction {
 impl std::fmt::Debug for RV32IInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unknown => write!(f, "Instruction::Unknown"),
+            //Self::Unknown => write!(f, "Instruction::Unknown"),
             Self::Lui(rd, imm) => write!(f, "Instruction::Lui {{ rd:x{rd}, imm:{imm} }}"),
             Self::Auipc(rd, imm) => write!(f, "Instruction::Auipc {{ rd:x{rd}, imm:{imm} }}"),
             Self::Jal(rd, imm) => write!(f, "Instruction::Jal {{ rd:x{rd}, imm:{imm} }}"),
@@ -90,6 +97,32 @@ impl std::fmt::Debug for RV32IInstruction {
             Self::Pause => write!(f, "Instruction::Pause"),
             Self::Ecall => write!(f, "Instruction::Ecall"),
             Self::Ebreak => write!(f, "Instruction::Ebreak"),
+        }
+    }
+}
+
+pub enum RV32MInstruction {
+    Mul(u8, u8, u8),
+    Mulh(u8, u8, u8),
+    Mulhsu(u8, u8, u8),
+    Mulhu(u8, u8, u8),
+    Div(u8, u8, u8),
+    Divu(u8, u8, u8),
+    Rem(u8, u8, u8),
+    Remu(u8, u8, u8),
+}
+
+impl std::fmt::Debug for RV32MInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Mul(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mul {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Mulh(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulh {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Mulhsu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulhsu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Mulhu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulhu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Div(rd, rs1, rs2) => write!(f, "RV32MInstruction::Div {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Divu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Divu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Rem(rd, rs1, rs2) => write!(f, "RV32MInstruction::Rem {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Remu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Remu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
         }
     }
 }
@@ -234,7 +267,7 @@ const OPTABLE: [Option<Type>; 128] = [
     /* 0b1111111 */ None,
 ];
 
-pub fn rv32_decode(instr: u32) -> RV32IInstruction {
+pub fn rv32_decode(instr: u32) -> RV32Instruction {
     let opcode: u8 = (instr & 0x7F) as u8;
     if let Some(t) = &OPTABLE[opcode as usize] {
         match t {
@@ -247,35 +280,79 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 match opcode {
                     0b0110011 => match funct3 {
                         0b000 => match funct7 {
-                            0b0000000 => return RV32IInstruction::Add(rd, rs1, rs2),
-                            0b0100000 => return RV32IInstruction::Sub(rd, rs1, rs2),
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Add(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Mul(rd, rs1, rs2)),
+                            0b0100000 => return RV32Instruction::RV32I(RV32IInstruction::Sub(rd, rs1, rs2)),
                             _ => {
                                 eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
-                                return RV32IInstruction::Unknown;
+                                return RV32Instruction::Unknown;
                             },
                         },
-                        0b001 => return RV32IInstruction::Sll(rd, rs1, rs2),
-                        0b010 => return RV32IInstruction::Slt(rd, rs1, rs2),
-                        0b011 => return RV32IInstruction::Sltu(rd, rs1, rs2),
-                        0b100 => return RV32IInstruction::Xor(rd, rs1, rs2),
+                        0b001 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Sll(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Mulh(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        0b010 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Slt(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Mulhsu(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        0b011 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Sltu(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Mulhu(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        0b100 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Xor(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Div(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
                         0b101 => match funct7 {
-                            0b0000000 => return RV32IInstruction::Srl(rd, rs1, rs2),
-                            0b0100000 => return RV32IInstruction::Sra(rd, rs1, rs2),
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Srl(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Divu(rd, rs1, rs2)),
+                            0b0100000 => return RV32Instruction::RV32I(RV32IInstruction::Sra(rd, rs1, rs2)),
                             _ => {
                                 eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
-                                return RV32IInstruction::Unknown;
+                                return RV32Instruction::Unknown;
                             },
                         },
-                        0b110 => return RV32IInstruction::Or(rd, rs1, rs2),
-                        0b111 => return RV32IInstruction::And(rd, rs1, rs2),
+                        0b110 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Or(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Rem(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        0b111 => match funct7 {
+                            0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::And(rd, rs1, rs2)),
+                            0b0000001 => return RV32Instruction::RV32M(RV32MInstruction::Remu(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type instruction with funct7: 0b{:07b}", funct7);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
                         _ => {
                             eprintln!("Unknown R-type instruction with funct3: 0b{:03b}", funct3);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
                     _ => {
                         eprintln!("Unknown R-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
@@ -287,65 +364,65 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 let iimm: i32 = ((uimm as i32) << 20) >> 20;
                 match opcode {
                     0b0000011 => match funct3 {
-                        0b000 => return RV32IInstruction::Lb(rd, rs1, iimm),
-                        0b001 => return RV32IInstruction::Lh(rd, rs1, iimm),
-                        0b010 => return RV32IInstruction::Lw(rd, rs1, iimm),
-                        0b100 => return RV32IInstruction::Lbu(rd, rs1, iimm),
-                        0b101 => return RV32IInstruction::Lhu(rd, rs1, iimm),
+                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Lb(rd, rs1, iimm)),
+                        0b001 => return RV32Instruction::RV32I(RV32IInstruction::Lh(rd, rs1, iimm)),
+                        0b010 => return RV32Instruction::RV32I(RV32IInstruction::Lw(rd, rs1, iimm)),
+                        0b100 => return RV32Instruction::RV32I(RV32IInstruction::Lbu(rd, rs1, iimm)),
+                        0b101 => return RV32Instruction::RV32I(RV32IInstruction::Lhu(rd, rs1, iimm)),
                         _ => {
                             eprintln!("Unknown I-type instruction with funct3: 0b{:03b}", funct3);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
                     0b0001111 => match uimm {
-                        0b100000110011 => return RV32IInstruction::FenceTSO,
-                        0b000000010000 => return RV32IInstruction::Pause,
+                        0b100000110011 => return RV32Instruction::RV32I(RV32IInstruction::FenceTSO),
+                        0b000000010000 => return RV32Instruction::RV32I(RV32IInstruction::Pause),
                         _ => {
                             let succ: u8 = (uimm & 0xF) as u8;
                             let pred: u8 = ((uimm >> 4) & 0xF) as u8;
                             let fm: u8 = ((uimm >> 8) & 0xF) as u8;
-                            return RV32IInstruction::Fence(rd, rs1, succ, pred, fm);
+                            return RV32Instruction::RV32I(RV32IInstruction::Fence(rd, rs1, succ, pred, fm));
                         },
                     },
                     0b0010011 => match funct3 {
-                        0b000 => return RV32IInstruction::Addi(rd, rs1, iimm),
+                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Addi(rd, rs1, iimm)),
                         0b001 => {
                             let shamt: u8 = (uimm & 0x1F) as u8;
-                            return RV32IInstruction::Slli(rd, rs1, shamt);
+                            return RV32Instruction::RV32I(RV32IInstruction::Slli(rd, rs1, shamt));
                         },
-                        0b010 => return RV32IInstruction::Slti(rd, rs1, iimm),
-                        0b011 => return RV32IInstruction::Sltiu(rd, rs1, iimm),
-                        0b100 => return RV32IInstruction::Xori(rd, rs1, iimm),
+                        0b010 => return RV32Instruction::RV32I(RV32IInstruction::Slti(rd, rs1, iimm)),
+                        0b011 => return RV32Instruction::RV32I(RV32IInstruction::Sltiu(rd, rs1, iimm)),
+                        0b100 => return RV32Instruction::RV32I(RV32IInstruction::Xori(rd, rs1, iimm)),
                         0b101 => {
                             let shamt: u8 = (uimm & 0x1F) as u8;
                             match uimm >> 5 {
-                                0b0000000 => return RV32IInstruction::Srli(rd, rs1, shamt),
-                                0b0100000 => return RV32IInstruction::Srai(rd, rs1, shamt),
+                                0b0000000 => return RV32Instruction::RV32I(RV32IInstruction::Srli(rd, rs1, shamt)),
+                                0b0100000 => return RV32Instruction::RV32I(RV32IInstruction::Srai(rd, rs1, shamt)),
                                 _ => {
                                     eprintln!("Unknown I-type instruction with funct3: 0b{:03b}", funct3);
-                                    return RV32IInstruction::Unknown;
+                                    return RV32Instruction::Unknown;
                                 },
                             }
                         },
-                        0b110 => return RV32IInstruction::Ori(rd, rs1, iimm),
-                        0b111 => return RV32IInstruction::Andi(rd, rs1, iimm),
+                        0b110 => return RV32Instruction::RV32I(RV32IInstruction::Ori(rd, rs1, iimm)),
+                        0b111 => return RV32Instruction::RV32I(RV32IInstruction::Andi(rd, rs1, iimm)),
                         _ => {
                             eprintln!("Unknown I-type instruction with funct3: 0b{:03b}", funct3);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
-                    0b1100111 => return RV32IInstruction::Jalr(rd, rs1, iimm),
+                    0b1100111 => return RV32Instruction::RV32I(RV32IInstruction::Jalr(rd, rs1, iimm)),
                     0b1110011 => match uimm {
-                        0b000000000000 => return RV32IInstruction::Ecall,
-                        0b000000000001 => return RV32IInstruction::Ebreak,
+                        0b000000000000 => return RV32Instruction::RV32I(RV32IInstruction::Ecall),
+                        0b000000000001 => return RV32Instruction::RV32I(RV32IInstruction::Ebreak),
                         _ => {
                             eprintln!("Unknown I-type instruction with imm[11:0]: 0b{:012b}", iimm);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
                     _ => {
                         eprintln!("Unknown I-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
@@ -359,17 +436,17 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 let iimm: i32 = ((uimm as i32) << 20) >> 20;
                 match opcode {
                     0b0100011 => match funct3 {
-                        0b000 => return RV32IInstruction::Sb(rs2, rs1, iimm),
-                        0b001 => return RV32IInstruction::Sh(rs2, rs1, iimm),
-                        0b010 => return RV32IInstruction::Sw(rs2, rs1, iimm),
+                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Sb(rs2, rs1, iimm)),
+                        0b001 => return RV32Instruction::RV32I(RV32IInstruction::Sh(rs2, rs1, iimm)),
+                        0b010 => return RV32Instruction::RV32I(RV32IInstruction::Sw(rs2, rs1, iimm)),
                         _ => {
                             eprintln!("Unknown S-type instruction with funct3: 0b{:03b}", funct3);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
                     _ => {
                         eprintln!("Unknown S-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
@@ -383,20 +460,20 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 let iimm: i32 = ((uimm as i32) << 19) >> 19;
                 match opcode {
                     0b1100011 => match funct3 {
-                        0b000 => return RV32IInstruction::Beq(rs1, rs2, iimm),
-                        0b001 => return RV32IInstruction::Bne(rs1, rs2, iimm),
-                        0b100 => return RV32IInstruction::Blt(rs1, rs2, iimm),
-                        0b101 => return RV32IInstruction::Bge(rs1, rs2, iimm),
-                        0b110 => return RV32IInstruction::Bltu(rs1, rs2, iimm),
-                        0b111 => return RV32IInstruction::Bgeu(rs1, rs2, iimm),
+                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Beq(rs1, rs2, iimm)),
+                        0b001 => return RV32Instruction::RV32I(RV32IInstruction::Bne(rs1, rs2, iimm)),
+                        0b100 => return RV32Instruction::RV32I(RV32IInstruction::Blt(rs1, rs2, iimm)),
+                        0b101 => return RV32Instruction::RV32I(RV32IInstruction::Bge(rs1, rs2, iimm)),
+                        0b110 => return RV32Instruction::RV32I(RV32IInstruction::Bltu(rs1, rs2, iimm)),
+                        0b111 => return RV32Instruction::RV32I(RV32IInstruction::Bgeu(rs1, rs2, iimm)),
                         _ => {
                             eprintln!("Unknown B-type instruction with funct3: 0b{:03b}", funct3);
-                            return RV32IInstruction::Unknown;
+                            return RV32Instruction::Unknown;
                         },
                     },
                     _ => {
                         eprintln!("Unknown B-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
@@ -405,11 +482,11 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 let uimm: u32 = (instr & 0xFFFFF000) as u32;
                 let iimm: i32 = uimm as i32;
                 match opcode {
-                    0b0110111 => return RV32IInstruction::Lui(rd, iimm),
-                    0b0010111 => return RV32IInstruction::Auipc(rd, iimm),
+                    0b0110111 => return RV32Instruction::RV32I(RV32IInstruction::Lui(rd, iimm)),
+                    0b0010111 => return RV32Instruction::RV32I(RV32IInstruction::Auipc(rd, iimm)),
                     _ => {
                         eprintln!("Unknown U-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
@@ -423,15 +500,15 @@ pub fn rv32_decode(instr: u32) -> RV32IInstruction {
                 let uimm: u32 = (((segment3 as u32) << 20) as u32 | ((segment0 as u32) << 12) as u32 | ((segment1 as u32) << 11) as u32 | (segment2 << 1) as u32) as u32;
                 let iimm: i32 = ((uimm as i32) << 11) >> 11;
                 match opcode {
-                    0b1101111 => return RV32IInstruction::Jal(rd, iimm),
+                    0b1101111 => return RV32Instruction::RV32I(RV32IInstruction::Jal(rd, iimm)),
                     _ => {
                         eprintln!("Unknown J-type instruction with opcode: 0b{:07b}", opcode);
-                        return RV32IInstruction::Unknown;
+                        return RV32Instruction::Unknown;
                     },
                 }
             },
         }
     } else {
-        return RV32IInstruction::Unknown;
+        return RV32Instruction::Unknown;
     }
 }

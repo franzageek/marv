@@ -1,5 +1,5 @@
 use crate::instruction;
-use crate::instruction::RV32IInstruction;
+use crate::instruction::*;
 use colored::Colorize;
 
 pub struct RV32Regs {
@@ -110,205 +110,255 @@ impl RiscV32 {
     pub fn execute(&mut self) {
         while self.status {
             let instr: u32 = self.mem.read_word(self.regs.pc as usize);
-            let decoded: RV32IInstruction = instruction::rv32_decode(instr);
+            let decoded: RV32Instruction = instruction::rv32_decode(instr);
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded {
-                RV32IInstruction::Lui(rd, imm) => {
-                    self.regs.write(rd, imm as u32);
-                },
-                RV32IInstruction::Auipc(rd, imm) => {
-                    self.regs.write(rd, self.regs.pc.wrapping_add_signed(imm));
-                },
-                RV32IInstruction::Jal(rd, imm) => {
-                    self.regs.write(
-                        if rd == 0 {
-                            1
-                        } else {
-                            rd
+                RV32Instruction::RV32I(instr) => {
+                    match instr {
+                        RV32IInstruction::Lui(rd, imm) => {
+                            self.regs.write(rd, imm as u32);
                         },
-                        self.regs.pc.wrapping_add(4)
-                    );
-                    self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                },
-                RV32IInstruction::Jalr(rd, rs1, imm) => {
-                    let t: u32 = self.regs.pc.wrapping_add(4);
-                    self.regs.pc = self.regs.read(rs1).wrapping_add_signed(imm) & !1;
-                    self.regs.write(
-                        if rd == 0 {
-                            1
-                        } else {
-                            rd
+                        RV32IInstruction::Auipc(rd, imm) => {
+                            self.regs.write(rd, self.regs.pc.wrapping_add_signed(imm));
                         },
-                        t
-                    );
-                },
-                RV32IInstruction::Beq(rs1, rs2, imm) => {
-                    if self.regs.read(rs1) == self.regs.read(rs2) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                        RV32IInstruction::Jal(rd, imm) => {
+                            self.regs.write(
+                                if rd == 0 {
+                                    1
+                                } else {
+                                    rd
+                                },
+                                self.regs.pc.wrapping_add(4)
+                            );
+                            self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                        },
+                        RV32IInstruction::Jalr(rd, rs1, imm) => {
+                            let t: u32 = self.regs.pc.wrapping_add(4);
+                            self.regs.pc = self.regs.read(rs1).wrapping_add_signed(imm) & !1;
+                            self.regs.write(
+                                if rd == 0 {
+                                    1
+                                } else {
+                                    rd
+                                },
+                                t
+                            );
+                        },
+                        RV32IInstruction::Beq(rs1, rs2, imm) => {
+                            if self.regs.read(rs1) == self.regs.read(rs2) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Bne(rs1, rs2, imm) => {
+                            if self.regs.read(rs1) != self.regs.read(rs2) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Blt(rs1, rs2, imm) => {
+                            if (self.regs.read(rs1) as i32) < (self.regs.read(rs2) as i32) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Bge(rs1, rs2, imm) => {
+                            if (self.regs.read(rs1) as i32) >= (self.regs.read(rs2) as i32) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Bltu(rs1, rs2, imm) => {
+                            if self.regs.read(rs1) < self.regs.read(rs2) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Bgeu(rs1, rs2, imm) => {
+                            if self.regs.read(rs1) >= self.regs.read(rs2) {
+                                self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
+                            }
+                        },
+                        RV32IInstruction::Lb(rd, rs1, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let ubyte: u8 = self.mem.read_byte(address as usize);
+                            let idata: i32 = ((ubyte as i32) << 24) >> 24;
+                            self.regs.write(rd, idata as u32);
+                        },
+                        RV32IInstruction::Lh(rd, rs1, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let uhalf: u16 = self.mem.read_half_word(address as usize);
+                            let idata: i32 = ((uhalf as i32) << 16) >> 16;
+                            self.regs.write(rd, idata as u32);
+                        },
+                        RV32IInstruction::Lw(rd, rs1, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let udata: u32 = self.mem.read_word(address as usize);
+                            self.regs.write(rd, udata);
+                        },
+                        RV32IInstruction::Lbu(rd, rs1, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let ubyte: u8 = self.mem.read_byte(address as usize);
+                            self.regs.write(rd, (ubyte as u32) & !0xFF);
+                        },
+                        RV32IInstruction::Lhu(rd, rs1, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let uhalf: u16 = self.mem.read_half_word(address as usize);
+                            self.regs.write(rd, (uhalf as u32) & !0xFFFF);
+                        },
+                        RV32IInstruction::Sb(rs1, rs2, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let byte: u8 = (self.regs.read(rs2) & 0xFF) as u8;
+                            self.mem.write_byte(address as usize, byte);
+                        },
+                        RV32IInstruction::Sh(rs1, rs2, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            let half: u16 = (self.regs.read(rs2) & 0xFFFF) as u16;
+                            self.mem.write_half_word(address as usize, half);
+                        },
+                        RV32IInstruction::Sw(rs1, rs2, imm) => {
+                            let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            self.mem.write_word(address as usize, self.regs.read(rs2));
+                        },
+                        RV32IInstruction::Addi(rd, rs1, imm) => {
+                            let data: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Slti(rd, rs1, imm) => {
+                            if (self.regs.read(rs1) as i32) < imm {
+                                self.regs.write(rd, 1);
+                            } else {
+                                self.regs.write(rd, 0);
+                            }
+                        },
+                        RV32IInstruction::Sltiu(rd, rs1, imm) => {
+                            if self.regs.read(rs1) < imm as u32 {
+                                self.regs.write(rd, 1);
+                            } else {
+                                self.regs.write(rd, 0);
+                            }
+                        },
+                        RV32IInstruction::Xori(rd, rs1, imm) => {
+                            let data: u32 = self.regs.read(rs1) ^ (imm as u32);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Ori(rd, rs1, imm) => {
+                            let data: u32 = self.regs.read(rs1) | (imm as u32);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Andi(rd, rs1, imm) => {
+                            let data: u32 = self.regs.read(rs1) & (imm as u32);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Slli(rd, rs1, shamt) => {
+                            let data: u32 = self.regs.read(rs1) << shamt;
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Srli(rd, rs1, shamt) => {
+                            let data: u32 = self.regs.read(rs1) >> shamt;
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Srai(/*rd, rs1, shamt*/_, _, _) => {
+                            /*
+                            let data: u32 = ((self.regs.read(rs1) as i32) >> shamt) as u32;
+                            self.regs.write(rd, data);
+                            */
+                            panic!("Illegal instruction: SRAI");
+                        },
+                        RV32IInstruction::Add(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1).wrapping_add(self.regs.read(rs2));
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Sub(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1).wrapping_sub(self.regs.read(rs2));
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Sll(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1) << self.regs.read(rs2) & 0x1F;
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Slt(rd, rs1, rs2) => {
+                            if (self.regs.read(rs1) as i32) < (self.regs.read(rs2) as i32) {
+                                self.regs.write(rd, 1);
+                            } else {
+                                self.regs.write(rd, 0);
+                            }
+                        },
+                        RV32IInstruction::Sltu(rd, rs1, rs2) => {
+                            if self.regs.read(rs1) < self.regs.read(rs2) {
+                                self.regs.write(rd, 1);
+                            } else {
+                                self.regs.write(rd, 0);
+                            }
+                        },
+                        RV32IInstruction::Xor(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1) ^ self.regs.read(rs2);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Srl(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1) >> self.regs.read(rs2) & 0x1F;
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Sra(rd, rs1, rs2) => {
+                            let data: u32 = ((self.regs.read(rs1) as i32) >> self.regs.read(rs2) & 0x1F) as u32;
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::Or(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1) | self.regs.read(rs2);
+                            self.regs.write(rd, data);
+                        },
+                        RV32IInstruction::And(rd, rs1, rs2) => {
+                            let data: u32 = self.regs.read(rs1) & self.regs.read(rs2);
+                            self.regs.write(rd, data);
+                        },
+                        _ => {
+                            panic!("Unimplmemented instruction");
+                        }
                     }
                 },
-                RV32IInstruction::Bne(rs1, rs2, imm) => {
-                    if self.regs.read(rs1) != self.regs.read(rs2) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                    }
+                RV32Instruction::RV32M(instr) => match instr {
+                    RV32MInstruction::Mul(rd, rs1, rs2) => {
+                        let data: u32 = self.regs.read(rs1).wrapping_mul(self.regs.read(rs2));
+                        self.regs.write(rd, data);
+                    },
+                    RV32MInstruction::Mulh(rd, rs1, rs2) => {
+                        let data: i64 = (self.regs.read(rs1) as i32 * self.regs.read(rs2) as i32) as i64;
+                        self.regs.write(rd, (data >> 32) as u32);
+                    },
+                    RV32MInstruction::Mulhsu(rd, rs1, rs2) => {
+                        let data: i64 = self.regs.read(rs1) as i64 * self.regs.read(rs2) as u64 as i64;
+                        self.regs.write(rd, (data >> 32) as u32);
+                    },
+                    RV32MInstruction::Mulhu(rd, rs1, rs2) => {
+                        let data: u64 = self.regs.read(rs1) as u64 * self.regs.read(rs2) as u64;
+                        self.regs.write(rd, (data >> 32) as u32);
+                    },
+                    RV32MInstruction::Div(rd, rs1, rs2) => {
+                        if self.regs.read(rs2) == 0 {
+                            panic!("Division by zero");
+                        }
+                        let data: i32 = self.regs.read(rs1) as i32 / self.regs.read(rs2) as i32;
+                        self.regs.write(rd, data as u32);
+                    },
+                    RV32MInstruction::Divu(rd, rs1, rs2) => {
+                        if self.regs.read(rs2) == 0 {
+                            panic!("Division by zero");
+                        }
+                        let data: u32 = self.regs.read(rs1) / self.regs.read(rs2);
+                        self.regs.write(rd, data);
+                    },
+                    RV32MInstruction::Rem(rd, rs1, rs2) => {
+                        if self.regs.read(rs2) == 0 {
+                            panic!("Division by zero");
+                        }
+                        let data: i32 = self.regs.read(rs1) as i32 % self.regs.read(rs2) as i32;
+                        self.regs.write(rd, data as u32);
+                    },
+                    RV32MInstruction::Remu(rd, rs1, rs2) => {
+                        if self.regs.read(rs2) == 0 {
+                            panic!("Division by zero");
+                        }
+                        let data: u32 = self.regs.read(rs1) % self.regs.read(rs2);
+                        self.regs.write(rd, data);
+                    },
                 },
-                RV32IInstruction::Blt(rs1, rs2, imm) => {
-                    if (self.regs.read(rs1) as i32) < (self.regs.read(rs2) as i32) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                    }
-                },
-                RV32IInstruction::Bge(rs1, rs2, imm) => {
-                    if (self.regs.read(rs1) as i32) >= (self.regs.read(rs2) as i32) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                    }
-                },
-                RV32IInstruction::Bltu(rs1, rs2, imm) => {
-                    if self.regs.read(rs1) < self.regs.read(rs2) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                    }
-                },
-                RV32IInstruction::Bgeu(rs1, rs2, imm) => {
-                    if self.regs.read(rs1) >= self.regs.read(rs2) {
-                        self.regs.pc = self.regs.pc.wrapping_add_signed(imm);
-                    }
-                },
-                RV32IInstruction::Lb(rd, rs1, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let ubyte: u8 = self.mem.read_byte(address as usize);
-                    let idata: i32 = ((ubyte as i32) << 24) >> 24;
-                    self.regs.write(rd, idata as u32);
-                },
-                RV32IInstruction::Lh(rd, rs1, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let uhalf: u16 = self.mem.read_half_word(address as usize);
-                    let idata: i32 = ((uhalf as i32) << 16) >> 16;
-                    self.regs.write(rd, idata as u32);
-                },
-                RV32IInstruction::Lw(rd, rs1, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let udata: u32 = self.mem.read_word(address as usize);
-                    self.regs.write(rd, udata);
-                },
-                RV32IInstruction::Lbu(rd, rs1, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let ubyte: u8 = self.mem.read_byte(address as usize);
-                    self.regs.write(rd, (ubyte as u32) & !0xFF);
-                },
-                RV32IInstruction::Lhu(rd, rs1, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let uhalf: u16 = self.mem.read_half_word(address as usize);
-                    self.regs.write(rd, (uhalf as u32) & !0xFFFF);
-                },
-                RV32IInstruction::Sb(rs1, rs2, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let byte: u8 = (self.regs.read(rs2) & 0xFF) as u8;
-                    self.mem.write_byte(address as usize, byte);
-                },
-                RV32IInstruction::Sh(rs1, rs2, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    let half: u16 = (self.regs.read(rs2) & 0xFFFF) as u16;
-                    self.mem.write_half_word(address as usize, half);
-                },
-                RV32IInstruction::Sw(rs1, rs2, imm) => {
-                    let address: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    self.mem.write_word(address as usize, self.regs.read(rs2));
-                },
-                RV32IInstruction::Addi(rd, rs1, imm) => {
-                    let data: u32 = self.regs.read(rs1).wrapping_add_signed(imm);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Slti(rd, rs1, imm) => {
-                    if (self.regs.read(rs1) as i32) < imm {
-                        self.regs.write(rd, 1);
-                    } else {
-                        self.regs.write(rd, 0);
-                    }
-                },
-                RV32IInstruction::Sltiu(rd, rs1, imm) => {
-                    if self.regs.read(rs1) < imm as u32 {
-                        self.regs.write(rd, 1);
-                    } else {
-                        self.regs.write(rd, 0);
-                    }
-                },
-                RV32IInstruction::Xori(rd, rs1, imm) => {
-                    let data: u32 = self.regs.read(rs1) ^ (imm as u32);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Ori(rd, rs1, imm) => {
-                    let data: u32 = self.regs.read(rs1) | (imm as u32);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Andi(rd, rs1, imm) => {
-                    let data: u32 = self.regs.read(rs1) & (imm as u32);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Slli(rd, rs1, shamt) => {
-                    let data: u32 = self.regs.read(rs1) << shamt;
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Srli(rd, rs1, shamt) => {
-                    let data: u32 = self.regs.read(rs1) >> shamt;
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Srai(/*rd, rs1, shamt*/_, _, _) => {
-                    /*
-                    let data: u32 = ((self.regs.read(rs1) as i32) >> shamt) as u32;
-                    self.regs.write(rd, data);
-                    */
-                    panic!("Illegal instruction: SRAI");
-                },
-                RV32IInstruction::Add(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1).wrapping_add(self.regs.read(rs2));
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Sub(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1).wrapping_sub(self.regs.read(rs2));
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Sll(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1) << self.regs.read(rs2) & 0x1F;
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Slt(rd, rs1, rs2) => {
-                    if (self.regs.read(rs1) as i32) < (self.regs.read(rs2) as i32) {
-                        self.regs.write(rd, 1);
-                    } else {
-                        self.regs.write(rd, 0);
-                    }
-                },
-                RV32IInstruction::Sltu(rd, rs1, rs2) => {
-                    if self.regs.read(rs1) < self.regs.read(rs2) {
-                        self.regs.write(rd, 1);
-                    } else {
-                        self.regs.write(rd, 0);
-                    }
-                },
-                RV32IInstruction::Xor(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1) ^ self.regs.read(rs2);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Srl(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1) >> self.regs.read(rs2) & 0x1F;
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Sra(rd, rs1, rs2) => {
-                    let data: u32 = ((self.regs.read(rs1) as i32) >> self.regs.read(rs2) & 0x1F) as u32;
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Or(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1) | self.regs.read(rs2);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::And(rd, rs1, rs2) => {
-                    let data: u32 = self.regs.read(rs1) & self.regs.read(rs2);
-                    self.regs.write(rd, data);
-                },
-                RV32IInstruction::Unknown => {
+                RV32Instruction::Unknown => {
                     panic!("Invalid instruction");
-                }
-                _ => {
-                    panic!("Unimplmemented instruction");
                 }
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
