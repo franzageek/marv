@@ -1,6 +1,7 @@
 use crate::instruction;
 use crate::instruction::*;
 use colored::Colorize;
+use std::io::Write;
 
 pub struct RV32Regs {
     pub x: [u32; 32],
@@ -103,6 +104,7 @@ impl RiscV32 {
         self.regs.x.fill(0);
         println!("{}, all X registers have been set to 0", "done".green());
         print!("clearing RAM memory...");
+        std::io::stdout().flush().unwrap();
         self.mem.ram.fill(0);
         println!("{}", "done".green());
         println!("{}", "successful RV32 processor reset".on_truecolor(0, 100, 0));
