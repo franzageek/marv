@@ -54,6 +54,32 @@ pub enum RV32IInstruction {
     Ebreak,
 }
 
+pub enum RV32MInstruction {
+    Mul(u8, u8, u8),
+    Mulh(u8, u8, u8),
+    Mulhsu(u8, u8, u8),
+    Mulhu(u8, u8, u8),
+    Div(u8, u8, u8),
+    Divu(u8, u8, u8),
+    Rem(u8, u8, u8),
+    Remu(u8, u8, u8),
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum RV32AInstruction { // temporary implementation
+    ScW(u8, u8, u8),
+    AmoswapW(u8, u8, u8),
+    AmoaddW(u8, u8, u8),
+    AmoxorW(u8, u8, u8),
+    AmoandW(u8, u8, u8),
+    AmoorW(u8, u8, u8),
+    AmominW(u8, u8, u8),
+    AmomaxW(u8, u8, u8),
+    AmominuW(u8, u8, u8),
+    AmomaxuW(u8, u8, u8),
+}
+
 impl std::fmt::Debug for RV32IInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -104,17 +130,6 @@ impl std::fmt::Debug for RV32IInstruction {
     }
 }
 
-pub enum RV32MInstruction {
-    Mul(u8, u8, u8),
-    Mulh(u8, u8, u8),
-    Mulhsu(u8, u8, u8),
-    Mulhu(u8, u8, u8),
-    Div(u8, u8, u8),
-    Divu(u8, u8, u8),
-    Rem(u8, u8, u8),
-    Remu(u8, u8, u8),
-}
-
 impl std::fmt::Debug for RV32MInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -128,22 +143,6 @@ impl std::fmt::Debug for RV32MInstruction {
             Self::Remu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Remu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
         }
     }
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub enum RV32AInstruction { // not implemented yet
-    LrW,
-    ScW,
-    AmoswapW,
-    AmoaddW,
-    AmoxorW,
-    AmoandW,
-    Amoor,
-    AmominW,
-    AmomaxW,
-    AmominuW,
-    AmomaxuW,
 }
 
 pub enum Type {

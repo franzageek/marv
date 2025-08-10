@@ -83,9 +83,28 @@ pub fn rv32_decode(instr: u32) -> RV32Instruction {
                             return RV32Instruction::Unknown;
                         },
                     },
-                    0b0101111 => { 
-                        eprintln!("Atomic instructions are not implemented (yet), skipping"); // this is fine cause we're on a single threaded emulator
-                        return RV32Instruction::Nop;
+                    0b0101111 => match funct3 {
+                        0b010 => match (funct7 & !0x3) >> 2 {
+                            0b00000 => return RV32Instruction::RV32A(RV32AInstruction::AmoaddW(rd, rs1, rs2)),
+                            0b00001 => return RV32Instruction::RV32A(RV32AInstruction::AmoswapW(rd, rs1, rs2)),
+                            0b00010 => return RV32Instruction::RV32I(RV32IInstruction::Lw(rd, rs1, 0)), // TEMPORARY TRICK: replace with actual instruction
+                            0b00011 => return RV32Instruction::RV32A(RV32AInstruction::ScW(rd, rs1, rs2)),
+                            0b00100 => return RV32Instruction::RV32A(RV32AInstruction::AmoxorW(rd, rs1, rs2)),
+                            0b01100 => return RV32Instruction::RV32A(RV32AInstruction::AmoandW(rd, rs1, rs2)),
+                            0b01000 => return RV32Instruction::RV32A(RV32AInstruction::AmoorW(rd, rs1, rs2)),
+                            0b10000 => return RV32Instruction::RV32A(RV32AInstruction::AmominW(rd, rs1, rs2)),
+                            0b10100 => return RV32Instruction::RV32A(RV32AInstruction::AmomaxW(rd, rs1, rs2)),
+                            0b11000 => return RV32Instruction::RV32A(RV32AInstruction::AmominuW(rd, rs1, rs2)),
+                            0b11100 => return RV32Instruction::RV32A(RV32AInstruction::AmomaxuW(rd, rs1, rs2)),
+                            _ => {
+                                eprintln!("Unknown R-type A instruction with funct5: 0b{:05b}", (funct7 & !0x3) >> 2);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        _ => {
+                            eprintln!("Unknown R-type instruction with funct3: 0b{:03b}", funct3);
+                            return RV32Instruction::Unknown;
+                        },
                     },
                     _ => {
                         eprintln!("Unknown R-type instruction with opcode: 0b{:07b}", opcode);

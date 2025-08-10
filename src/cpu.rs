@@ -363,7 +363,92 @@ impl RiscV32 {
                         self.regs.write(rd, data);
                     },
                 },
-                RV32Instruction::RV32A(_) => { }, // act as a NOP (this is fine as long as we're single threaded)
+                RV32Instruction::RV32A(instr) => match instr {
+                    RV32AInstruction::ScW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        self.mem.write_word(address as usize, self.regs.read(rs2));
+                        self.regs.write(rd, 0);
+                    },
+                    RV32AInstruction::AmoswapW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = self.regs.read(rs2);
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmoaddW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = self.regs.read(rs2) + t;
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmoxorW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = self.regs.read(rs2) ^ t;
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmoandW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = self.regs.read(rs2) & t;
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmoorW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = self.regs.read(rs2) | t;
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmominW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = if (self.regs.read(rs2) as i32) < (t as i32) {
+                            self.regs.read(rs2)
+                        } else {
+                            t
+                        };
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmomaxW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = if (self.regs.read(rs2) as i32) > (t as i32) {
+                            self.regs.read(rs2)
+                        } else {
+                            t
+                        };
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmominuW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = if self.regs.read(rs2) < t {
+                            self.regs.read(rs2)
+                        } else {
+                            t
+                        };
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32AInstruction::AmomaxuW(rd, rs1, rs2) => {
+                        let address: u32 = self.regs.read(rs1);
+                        let t: u32 = self.mem.read_word(address as usize);
+                        let data: u32 = if self.regs.read(rs2) < t {
+                            self.regs.read(rs2)
+                        } else {
+                            t
+                        };
+                        self.mem.write_word(address as usize, data);
+                        self.regs.write(rd, t);
+                    },
+                }, 
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
         }
