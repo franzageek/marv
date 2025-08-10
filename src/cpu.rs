@@ -440,7 +440,7 @@ impl RiscV32 {
                     RV32AInstruction::AmomaxuW(rd, rs1, rs2) => {
                         let address: u32 = self.regs.read(rs1);
                         let t: u32 = self.mem.read_word(address as usize);
-                        let data: u32 = if self.regs.read(rs2) < t {
+                        let data: u32 = if self.regs.read(rs2) > t {
                             self.regs.read(rs2)
                         } else {
                             t
