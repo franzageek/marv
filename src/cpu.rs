@@ -1,4 +1,4 @@
-use crate::instruction;
+use crate::decode;
 use crate::instruction::*;
 use colored::Colorize;
 use std::io::Write;
@@ -112,9 +112,13 @@ impl RiscV32 {
     pub fn execute(&mut self) {
         while self.status {
             let instr: u32 = self.mem.read_word(self.regs.pc as usize);
-            let decoded: RV32Instruction = instruction::rv32_decode(instr);
+            let decoded: RV32Instruction = decode::rv32_decode(instr);
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded {
+                RV32Instruction::Unknown => {
+                    panic!("Invalid instruction");
+                },
+                RV32Instruction::Nop => { },
                 RV32Instruction::RV32I(instr) => {
                     match instr {
                         RV32IInstruction::Lui(rd, imm) => {
@@ -359,9 +363,7 @@ impl RiscV32 {
                         self.regs.write(rd, data);
                     },
                 },
-                RV32Instruction::Unknown => {
-                    panic!("Invalid instruction");
-                }
+                RV32Instruction::RV32A(_) => { }, // act as a NOP (this is fine as long as we're single threaded)
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
         }
