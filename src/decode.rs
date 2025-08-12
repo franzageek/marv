@@ -1,4 +1,8 @@
 use crate::instruction::*;
+use crate::extensions::rv32i::*;
+use crate::extensions::rv32m::*;
+use crate::extensions::rv32a::*;
+use crate::extensions::rv32zicsr::*;
 use crate::trap::*;
 
 pub fn rv32_decode(instr: u32) -> RV32Instruction {

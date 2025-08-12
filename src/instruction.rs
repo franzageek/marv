@@ -1,159 +1,28 @@
 use crate::trap;
+use crate::extensions::*;
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum RV32Instruction { // [ ] impl execute() for each extension {decode, then call .execute() on the return value, match inside the function}
     Unknown,
     Nop,
-    RV32I(RV32IInstruction),
-    RV32M(RV32MInstruction),
-    RV32A(RV32AInstruction),
-    RV32Ziscr(RV32ZicsrInstruction),
+    RV32I(rv32i::RV32IInstruction),
+    RV32M(rv32m::RV32MInstruction),
+    RV32A(rv32a::RV32AInstruction),
+    RV32Ziscr(rv32zicsr::RV32ZicsrInstruction),
     TrapReturn(trap::TrapRetInstruction)
 }
 
-pub enum RV32IInstruction {
-    Lui(u8, i32),
-    Auipc(u8, i32),
-    Jal(u8, i32),
-    Jalr(u8, u8, i32),
-    Beq(u8, u8, i32),
-    Bne(u8, u8, i32),
-    Blt(u8, u8, i32),
-    Bge(u8, u8, i32),
-    Bltu(u8, u8, i32),
-    Bgeu(u8, u8, i32),
-    Lb(u8, u8, i32),
-    Lh(u8, u8, i32),
-    Lw(u8, u8, i32),
-    Lbu(u8, u8, i32),
-    Lhu(u8, u8, i32),
-    Sb(u8, u8, i32),
-    Sh(u8, u8, i32),
-    Sw(u8, u8, i32),
-    Addi(u8, u8, i32),
-    Slti(u8, u8, i32),
-    Sltiu(u8, u8, i32),
-    Xori(u8, u8, i32),
-    Ori(u8, u8, i32),
-    Andi(u8, u8, i32),
-    Slli(u8, u8, u8),
-    Srli(u8, u8, u8),
-    Srai(u8, u8, u8),
-    Add(u8, u8, u8),
-    Sub(u8, u8, u8),
-    Sll(u8, u8, u8),
-    Slt(u8, u8, u8),
-    Sltu(u8, u8, u8),
-    Xor(u8, u8, u8),
-    Srl(u8, u8, u8),
-    Sra(u8, u8, u8),
-    Or(u8, u8, u8),
-    And(u8, u8, u8),
-    Fence(u8, u8, u8, u8, u8),
-    FenceTSO,
-    Pause,
-    Ecall,
-    Ebreak,
-}
-
-pub enum RV32MInstruction {
-    Mul(u8, u8, u8),
-    Mulh(u8, u8, u8),
-    Mulhsu(u8, u8, u8),
-    Mulhu(u8, u8, u8),
-    Div(u8, u8, u8),
-    Divu(u8, u8, u8),
-    Rem(u8, u8, u8),
-    Remu(u8, u8, u8),
-}
-
-#[allow(dead_code)]
-#[derive(Debug)] // [ ] implement debug
-pub enum RV32AInstruction { // temporary implementation
-    ScW(u8, u8, u8),
-    AmoswapW(u8, u8, u8),
-    AmoaddW(u8, u8, u8),
-    AmoxorW(u8, u8, u8),
-    AmoandW(u8, u8, u8),
-    AmoorW(u8, u8, u8),
-    AmominW(u8, u8, u8),
-    AmomaxW(u8, u8, u8),
-    AmominuW(u8, u8, u8),
-    AmomaxuW(u8, u8, u8),
-}
-
-#[derive(Debug)]
-pub enum RV32ZicsrInstruction {
-    Csrrw(u8, u8, u16),
-    Csrrs(u8, u8, u16),
-    Csrrc(u8, u8, u16),
-    Csrrwi(u8, u8, u16),
-    Csrrsi(u8, u8, u16),
-    Csrrci(u8, u8, u16),
-}
-
-impl std::fmt::Debug for RV32IInstruction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Execute for RV32Instruction {
+    fn execute(self, cpu: &mut crate::cpu::RiscV32) -> Option<trap::Trap> {
         match self {
-            //Self::Unknown => write!(f, "Instruction::Unknown"),
-            Self::Lui(rd, imm) => write!(f, "Instruction::Lui {{ rd:x{rd}, imm:{imm} }}"),
-            Self::Auipc(rd, imm) => write!(f, "Instruction::Auipc {{ rd:x{rd}, imm:{imm} }}"),
-            Self::Jal(rd, imm) => write!(f, "Instruction::Jal {{ rd:x{rd}, imm:{imm} }}"),
-            Self::Jalr(rd, rs1, imm) => write!(f, "Instruction::Jalr {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Beq(rs1, rs2, imm) => write!(f, "Instruction::Beq {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Bne(rs1, rs2, imm) => write!(f, "Instruction::Bne {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Blt(rs1, rs2, imm) => write!(f, "Instruction::Blt {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Bge(rs1, rs2, imm) => write!(f, "Instruction::Bge {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Bltu(rs1, rs2, imm) => write!(f, "Instruction::Bltu {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Bgeu(rs1, rs2, imm) => write!(f, "Instruction::Bgeu {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Lb(rd, rs1, imm) => write!(f, "Instruction::Lb {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Lh(rd, rs1, imm) => write!(f, "Instruction::Lh {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Lw(rd, rs1, imm) => write!(f, "Instruction::Lw {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Lbu(rd, rs1, imm) => write!(f, "Instruction::Lbu {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Lhu(rd, rs1, imm) => write!(f, "Instruction::Lhu {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Sb(rs1, rs2, imm) => write!(f, "Instruction::Sb {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Sh(rs1, rs2, imm) => write!(f, "Instruction::Sh {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Sw(rs1, rs2, imm) => write!(f, "Instruction::Sw {{ rs1:x{rs1}, rs2:x{rs2}, imm:{imm} }}"),
-            Self::Addi(rd, rs1, imm) => write!(f, "Instruction::Addi {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Slti(rd, rs1, imm) => write!(f, "Instruction::Slti {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Sltiu(rd, rs1, imm) => write!(f, "Instruction::Sltiu {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Xori(rd, rs1, imm) => write!(f, "Instruction::Xori {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Ori(rd, rs1, imm) => write!(f, "Instruction::Ori {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Andi(rd, rs1, imm) => write!(f, "Instruction::Andi {{ rd:x{rd}, rs1:x{rs1}, imm:{imm} }}"),
-            Self::Slli(rd, rs1, shamt) => write!(f, "Instruction::Slli {{ rd:x{rd}, rs1:x{rs1}, shamt:{shamt} }}"),
-            Self::Srli(rd, rs1, shamt) => write!(f, "Instruction::Srli {{ rd:x{rd}, rs1:x{rs1}, shamt:{shamt} }}"),
-            Self::Srai(rd, rs1, shamt) => write!(f, "Instruction::Srai {{ rd:x{rd}, rs1:x{rs1}, shamt:{shamt} }}"),
-            Self::Add(rd, rs1, rs2) => write!(f, "Instruction::Add {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Sub(rd, rs1, rs2) => write!(f, "Instruction::Sub {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Sll(rd, rs1, rs2) => write!(f, "Instruction::Sll {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Slt(rd, rs1, rs2) => write!(f, "Instruction::Slt {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Sltu(rd, rs1, rs2) => write!(f, "Instruction::Sltu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Xor(rd, rs1, rs2) => write!(f, "Instruction::Xor {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Srl(rd, rs1, rs2) => write!(f, "Instruction::Srl {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Sra(rd, rs1, rs2) => write!(f, "Instruction::Sra {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Or(rd, rs1, rs2) => write!(f, "Instruction::Or {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::And(rd, rs1, rs2) => write!(f, "Instruction::And {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Fence(rd, rs1, succ, pred, fm) => write!(f, "Instruction::Fence x{}, x{}, {}, {}, {}", rd, rs1, succ, pred, fm),
-            Self::FenceTSO => write!(f, "Instruction::Fence.TSO"),
-            Self::Pause => write!(f, "Instruction::Pause"),
-            Self::Ecall => write!(f, "Instruction::Ecall"),
-            Self::Ebreak => write!(f, "Instruction::Ebreak"),
-        }
-    }
-}
-
-impl std::fmt::Debug for RV32MInstruction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Mul(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mul {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Mulh(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulh {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Mulhsu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulhsu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Mulhu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Mulhu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Div(rd, rs1, rs2) => write!(f, "RV32MInstruction::Div {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Divu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Divu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Rem(rd, rs1, rs2) => write!(f, "RV32MInstruction::Rem {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
-            Self::Remu(rd, rs1, rs2) => write!(f, "RV32MInstruction::Remu {{ rd:x{rd}, rs1:x{rs1}, rs2:x{rs2} }}"),
+            Self::Unknown => return Some(trap::Trap::IllegalInstruction),
+            Self::Nop => return None,
+            Self::RV32I(instr) => return instr.execute(cpu),
+            Self::RV32M(instr) => return instr.execute(cpu),
+            Self::RV32A(instr) => return instr.execute(cpu),
+            Self::RV32Ziscr(instr) => return instr.execute(cpu),
+            Self::TrapReturn(instr) =>return instr.execute(cpu),
         }
     }
 }
