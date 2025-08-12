@@ -271,7 +271,7 @@ impl Execute for RV32IInstruction {
                 cpu.regs.write(rd, data);
                 */
                 //panic!("Illegal instruction: SRAI");
-                return Some(trap::Trap::IllegalInstruction);
+                return Some(trap::Trap::take(trap::Trap::IllegalInstruction, cpu, cpu.regs.pc));
             },
             RV32IInstruction::Add(rd, rs1, rs2) => {
                 let data: u32 = cpu.regs.read(rs1).wrapping_add(cpu.regs.read(rs2));

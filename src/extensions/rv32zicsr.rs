@@ -37,7 +37,8 @@ impl Execute for RV32ZicsrInstruction {
                 return None;
             },
             RV32ZicsrInstruction::Csrrwi(rd, zimm, csr) => {
-                cpu.regs.write(rd, cpu.read_csr(csr).unwrap());
+                let data: u32 = cpu.read_csr(csr).unwrap();
+                cpu.regs.write(rd, data);
                 cpu.write_csr(csr, (zimm & 0x1F) as u32)?;
                 return None;
             },

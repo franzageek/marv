@@ -250,7 +250,7 @@ impl RiscV32 {
         }
         return false;
     }
-    pub fn read_csr(&self, csr: u16) -> Result<u32, trap::Trap> {
+    pub fn read_csr(&mut self, csr: u16) -> Result<u32, trap::Trap> {
         if self.check_privilege(csr) {
             match csr {
                 0xC00 => return Ok(self.regs.csr.cycle),
@@ -286,10 +286,10 @@ impl RiscV32 {
                 0x342 => return Ok(self.regs.csr.mcause),
                 0x343 => return Ok(self.regs.csr.mtval),
                 0x344 => return Ok(self.regs.csr.mip),
-                _ => return Err(trap::Trap::IllegalInstruction),
+                _ => return Err(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc)),
             }
         }
-        return Err(trap::Trap::IllegalInstruction);
+        return Err(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc));
     }
     pub fn write_csr(&mut self, csr: u16, data: u32) -> Option<trap::Trap> {
         if self.check_privilege(csr) {
@@ -324,11 +324,11 @@ impl RiscV32 {
                 0x342 => self.regs.csr.mcause = data,
                 0x343 => self.regs.csr.mtval = data,
                 0x344 => self.regs.csr.mip = data,
-                _ => return Some(trap::Trap::IllegalInstruction),
+                _ => return Some(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc)),
             }
             return None;
         }
-        return Some(trap::Trap::IllegalInstruction);
+        return Some(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc));
     }
     pub fn execute(&mut self) {
         while self.status {
@@ -337,10 +337,10 @@ impl RiscV32 {
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded.execute(self) {
                 None => {},
-                Some(trap) => match trap {
-                    trap::Trap::IllegalInstruction => panic!("Illegal instruction"),
-                    _ => panic!("trap occurred"), // temporary 
-                }
+                Some(trap) => {
+                    trap.display();
+                    panic!("Emulation halted"); // [ ] display some data like regs, memory
+                },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
         }

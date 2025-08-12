@@ -16,7 +16,7 @@ pub enum RV32Instruction { // [ ] impl execute() for each extension {decode, the
 impl Execute for RV32Instruction {
     fn execute(self, cpu: &mut crate::cpu::RiscV32) -> Option<trap::Trap> {
         match self {
-            Self::Unknown => return Some(trap::Trap::IllegalInstruction),
+            Self::Unknown => return Some(trap::Trap::take(trap::Trap::IllegalInstruction, cpu, cpu.regs.pc)),
             Self::Nop => return None,
             Self::RV32I(instr) => return instr.execute(cpu),
             Self::RV32M(instr) => return instr.execute(cpu),
