@@ -116,7 +116,7 @@ pub fn rv32_decode(instr: u32) -> RV32Instruction {
                 let rd: u8 = ((instr >> 7) & 0x1F) as u8;
                 let funct3: u8 = ((instr >> (7 + 5)) & 0x7) as u8;
                 let rs1: u8 = ((instr >> 7 + 5 + 3) & 0x1F) as u8;
-                let uimm: u32 = ((instr >> 7 + 5 + 3 + 5) & 0x7FF) as u32;
+                let uimm: u32 = ((instr >> 7 + 5 + 3 + 5) & 0xFFF) as u32;
                 let iimm: i32 = ((uimm as i32) << 20) >> 20;
                 match opcode {
                     0b0000011 => match funct3 {
@@ -168,11 +168,23 @@ pub fn rv32_decode(instr: u32) -> RV32Instruction {
                         },
                     },
                     0b1100111 => return RV32Instruction::RV32I(RV32IInstruction::Jalr(rd, rs1, iimm)),
-                    0b1110011 => match uimm {
-                        0b000000000000 => return RV32Instruction::RV32I(RV32IInstruction::Ecall),
-                        0b000000000001 => return RV32Instruction::RV32I(RV32IInstruction::Ebreak),
+                    0b1110011 => match funct3 {
+                        0b000 => match uimm {
+                            0b000000000000 => return RV32Instruction::RV32I(RV32IInstruction::Ecall),
+                            0b000000000001 => return RV32Instruction::RV32I(RV32IInstruction::Ebreak),
+                            _ => {
+                                eprintln!("Unknown I-type instruction with imm[11:0]: 0b{:012b}", iimm);
+                                return RV32Instruction::Unknown;
+                            },
+                        },
+                        0b001 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrw(rd, rs1, (uimm & 0xFFF) as u16)),
+                        0b010 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrs(rd, rs1, (uimm & 0xFFF) as u16)),
+                        0b011 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrc(rd, rs1, (uimm & 0xFFF) as u16)),
+                        0b101 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrwi(rd, rs1, (uimm & 0xFFF) as u16)),
+                        0b110 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrsi(rd, rs1, (uimm & 0xFFF) as u16)),
+                        0b111 => return RV32Instruction::RV32Ziscr(RV32ZicsrInstruction::Csrrci(rd, rs1, (uimm & 0xFFF) as u16)),
                         _ => {
-                            eprintln!("Unknown I-type instruction with imm[11:0]: 0b{:012b}", iimm);
+                            eprintln!("Unknown I-type instruction with funct3: 0b{:03b}", funct3);
                             return RV32Instruction::Unknown;
                         },
                     },

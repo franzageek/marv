@@ -244,8 +244,8 @@ impl RiscV32 {
         return false;
     }
     fn read_csr(&self, csr: u16) -> Result<u32, trap::Trap> {
-        if self.check_privilege(csr & 0xFFF) { // mettere check priv prima, se fallisce fa trap
-            match csr & 0xFFF {
+        if self.check_privilege(csr) { // mettere check priv prima, se fallisce fa trap
+            match csr {
                 0xC00 => return Ok(self.regs.csr.cycle),
                 0xC01 => return Ok(self.regs.csr.time),
                 0xC02 => return Ok(self.regs.csr.instret),
@@ -285,8 +285,8 @@ impl RiscV32 {
         return Err(trap::Trap::IllegalInstruction);
     }
     fn write_csr(&mut self, csr: u16, data: u32) -> Option<trap::Trap> {
-        if self.check_privilege(csr & 0xFFF) { // mettere check priv prima, se fallisce fa trap
-            match csr & 0xFFF {
+        if self.check_privilege(csr) { // mettere check priv prima, se fallisce fa trap
+            match csr {
                 0xC00 => self.regs.csr.cycle = data,
                 0xC01 => self.regs.csr.time = data,
                 0xC02 => self.regs.csr.instret = data,
@@ -332,10 +332,8 @@ impl RiscV32 {
             let decoded: RV32Instruction = decode::rv32_decode(instr);
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded {
-                RV32Instruction::Unknown => {
-                    panic!("Invalid instruction");
-                },
-                RV32Instruction::Nop => { },
+                RV32Instruction::Unknown => panic!("Invalid instruction"),
+                RV32Instruction::Nop => {},
                 RV32Instruction::RV32I(instr) => {
                     match instr {
                         RV32IInstruction::Lui(rd, imm) => {
@@ -664,7 +662,42 @@ impl RiscV32 {
                         self.regs.write(rd, t);
                     },
                 },
-                RV32Instruction::RV32Ziscr(_) => { }, 
+                RV32Instruction::RV32Ziscr(instr) => match instr {
+                    RV32ZicsrInstruction::Csrrw(rd, rs1, csr) => {
+                        let t: u32 = self.read_csr(csr).unwrap(); // temporary error handling
+                        let data: u32 = self.regs.read(rs1);
+                        self.write_csr(csr, data).unwrap(); // temporary error handling
+                        self.regs.write(rd, t);
+                    },
+                    RV32ZicsrInstruction::Csrrs(rd, rs1, csr) => {
+                        let t: u32 = self.read_csr(csr).unwrap();
+                        let data: u32 = t | self.regs.read(rs1);
+                        self.write_csr(csr, data).unwrap();
+                        self.regs.write(rd, t);
+                    },
+                    RV32ZicsrInstruction::Csrrc(rd, rs1, csr) => {
+                        let t: u32 = self.read_csr(csr).unwrap();
+                        let data: u32 = t & !self.regs.read(rs1);
+                        self.write_csr(csr, data).unwrap();
+                        self.regs.write(rd, t);
+                    },
+                    RV32ZicsrInstruction::Csrrwi(rd, zimm, csr) => {
+                        self.regs.write(rd, self.read_csr(csr).unwrap());
+                        self.write_csr(csr, (zimm & 0x1F) as u32);
+                    },
+                    RV32ZicsrInstruction::Csrrsi(rd, zimm, csr) => {
+                        let t: u32 = self.read_csr(csr).unwrap();
+                        let data: u32 = t | (zimm & 0x1F) as u32;
+                        self.write_csr(csr, data);
+                        self.regs.write(rd, t);
+                    },
+                    RV32ZicsrInstruction::Csrrci(rd, zimm, csr) => {
+                        let t: u32 = self.read_csr(csr).unwrap();
+                        let data: u32 = t & !(zimm & 0x1F) as u32;
+                        self.write_csr(csr, data);
+                        self.regs.write(rd, t);
+                    },
+                }, 
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
         }
