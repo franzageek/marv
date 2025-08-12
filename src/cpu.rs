@@ -191,6 +191,9 @@ impl RiscV32 {
         print!("resetting CSRs...");
         self.regs.csr.misa = (1 << 30) | (1 << 20) | (1 << 18) | (1 << 12) | (1 << 8) | (1 << 0);
         println!("{}, extensions {} + {} have been enabled, XLEN has been set to {}", "done".green(), "IMA".blue(), "SU".blue(), "32".blue());
+        print!("setting hardware thread ID...");
+        self.regs.csr.mhartid = 0;
+        println!("{}", "done".green());
         println!("{}", "successful RV32 processor reset".on_truecolor(0, 100, 0));
     }
     fn check_privilege(&self, csr: u16) -> bool { // [ ] give names to these constants
@@ -308,10 +311,7 @@ impl RiscV32 {
                 0x143 => self.regs.csr.stval = data,
                 0x144 => self.regs.csr.sip = data,
                 0x180 => self.regs.csr.satp = data,
-                0xF11 => self.regs.csr.mvendorid = data,
-                0xF12 => self.regs.csr.marchid = data,
                 0xF13 => self.regs.csr.mimpid = data,
-                0xF14 => self.regs.csr.mhartid = data,
                 0x300 => self.regs.csr.mstatus = data,
                 0x301 => self.regs.csr.misa = data,
                 0x302 => self.regs.csr.medeleg = data,
