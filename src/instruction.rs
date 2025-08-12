@@ -1,13 +1,13 @@
 #[allow(dead_code)]
 #[derive(Debug)]
-pub enum RV32Instruction {
+pub enum RV32Instruction { // [ ] impl execute() for each extension {decode, then call .execute() on the return value, match inside the function}
     Unknown,
     Nop,
     RV32I(RV32IInstruction),
     RV32M(RV32MInstruction),
     RV32A(RV32AInstruction),
+    RV32Ziscr(RV32ZicsrInstruction),
 }
-
 
 pub enum RV32IInstruction {
     Lui(u8, i32),
@@ -66,7 +66,7 @@ pub enum RV32MInstruction {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug)] // [ ] implement debug
 pub enum RV32AInstruction { // temporary implementation
     ScW(u8, u8, u8),
     AmoswapW(u8, u8, u8),
@@ -78,6 +78,16 @@ pub enum RV32AInstruction { // temporary implementation
     AmomaxW(u8, u8, u8),
     AmominuW(u8, u8, u8),
     AmomaxuW(u8, u8, u8),
+}
+
+#[derive(Debug)]
+pub enum RV32ZicsrInstruction {
+    Csrrw(u8, u8, u16),
+    Csrrs(u8, u8, u16),
+    Csrrc(u8, u8, u16),
+    Csrrwi(u8, u8, u16),
+    Csrrsi(u8, u8, u16),
+    Csrrci(u8, u8, u16),
 }
 
 impl std::fmt::Debug for RV32IInstruction {

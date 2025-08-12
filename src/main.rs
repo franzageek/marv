@@ -1,6 +1,7 @@
 mod cpu;
 mod instruction;
 mod decode;
+mod trap;
 
 fn main() {
     println!("== MARV RISC-V RV32IMA EMULATOR v0.1 ==\n== written by <franzageek> ==");
