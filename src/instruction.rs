@@ -1,3 +1,5 @@
+use crate::trap;
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum RV32Instruction { // [ ] impl execute() for each extension {decode, then call .execute() on the return value, match inside the function}
@@ -7,6 +9,7 @@ pub enum RV32Instruction { // [ ] impl execute() for each extension {decode, the
     RV32M(RV32MInstruction),
     RV32A(RV32AInstruction),
     RV32Ziscr(RV32ZicsrInstruction),
+    TrapReturn(trap::TrapRetInstruction)
 }
 
 pub enum RV32IInstruction {

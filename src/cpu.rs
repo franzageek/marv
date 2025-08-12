@@ -1,6 +1,7 @@
 use crate::decode;
 use crate::trap;
 use crate::instruction::*;
+use crate::trap::TrapRetInstruction;
 use colored::Colorize;
 use std::io::Write;
 
@@ -187,9 +188,12 @@ impl RiscV32 {
         std::io::stdout().flush().unwrap();
         self.mem.ram.fill(0);
         println!("{}", "done".green());
+        print!("resetting CSRs...");
+        self.regs.csr.misa = (1 << 30) | (1 << 20) | (1 << 18) | (1 << 12) | (1 << 8) | (1 << 0);
+        println!("{}, extensions {} + {} have been enabled, XLEN has been set to {}", "done".green(), "IMA".blue(), "SU".blue(), "32".blue());
         println!("{}", "successful RV32 processor reset".on_truecolor(0, 100, 0));
     }
-    fn check_privilege(&self, csr: u16) -> bool {
+    fn check_privilege(&self, csr: u16) -> bool { // [ ] give names to these constants
         if (
             self.privilege == 3 ||
             self.privilege == 1
@@ -244,7 +248,7 @@ impl RiscV32 {
         return false;
     }
     fn read_csr(&self, csr: u16) -> Result<u32, trap::Trap> {
-        if self.check_privilege(csr) { // mettere check priv prima, se fallisce fa trap
+        if self.check_privilege(csr) {
             match csr {
                 0xC00 => return Ok(self.regs.csr.cycle),
                 0xC01 => return Ok(self.regs.csr.time),
@@ -285,7 +289,7 @@ impl RiscV32 {
         return Err(trap::Trap::IllegalInstruction);
     }
     fn write_csr(&mut self, csr: u16, data: u32) -> Option<trap::Trap> {
-        if self.check_privilege(csr) { // mettere check priv prima, se fallisce fa trap
+        if self.check_privilege(csr) {
             match csr {
                 0xC00 => self.regs.csr.cycle = data,
                 0xC01 => self.regs.csr.time = data,
@@ -698,6 +702,28 @@ impl RiscV32 {
                         self.regs.write(rd, t);
                     },
                 }, 
+                RV32Instruction::TrapReturn(instr) => match instr {
+                    TrapRetInstruction::Sret => {
+                        self.regs.pc = self.read_csr(0x141).unwrap();
+                        let mut sstatus: u32 = self.read_csr(0x100).unwrap();
+                        let spp: u8 = ((sstatus >> 8) & 0x1) as u8; // get field SPP of sstatus
+                        self.privilege = spp; // restore previous privilege from SPP
+                        let spie: u8 = ((sstatus >> 5) & 0x1) as u8; // get field SPIE of sstatus
+                        sstatus &= !2 & !(1 << 8); // clear SIE field and set SPP field to 0
+                        sstatus |= ((spie << 1) | (1 << 5)) as u32; // restore field SIE of sstatus from SPIE and set SPIE to 1
+                        self.write_csr(0x100, sstatus); // flush the updated sstatus back to the CSR
+                    } ,
+                    TrapRetInstruction::Mret => {
+                        self.regs.pc = self.read_csr(0x341).unwrap();
+                        let mut mstatus: u32 = self.read_csr(0x300).unwrap();
+                        let mpp: u8 = ((mstatus >> 11) & 0x3) as u8;
+                        self.privilege = mpp;
+                        let mpie: u8 = ((mstatus >> 7) & 0x1) as u8;
+                        mstatus &= (!8) & !(3 << 11);
+                        mstatus |= ((mpie << 3) | (1 << 7)) as u32;
+                        self.write_csr(0x300, mstatus);
+                    },
+                },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
         }

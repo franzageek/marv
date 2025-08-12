@@ -1,4 +1,5 @@
 use crate::instruction::*;
+use crate::trap::*;
 
 pub fn rv32_decode(instr: u32) -> RV32Instruction {
     let opcode: u8 = (instr & 0x7F) as u8;
@@ -172,6 +173,8 @@ pub fn rv32_decode(instr: u32) -> RV32Instruction {
                         0b000 => match uimm {
                             0b000000000000 => return RV32Instruction::RV32I(RV32IInstruction::Ecall),
                             0b000000000001 => return RV32Instruction::RV32I(RV32IInstruction::Ebreak),
+                            0b000100000010 => return RV32Instruction::TrapReturn(TrapRetInstruction::Sret),
+                            0b001100000010 => return RV32Instruction::TrapReturn(TrapRetInstruction::Mret),
                             _ => {
                                 eprintln!("Unknown I-type instruction with imm[11:0]: 0b{:012b}", iimm);
                                 return RV32Instruction::Unknown;
