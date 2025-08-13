@@ -3,6 +3,7 @@ mod decode;
 mod extensions;
 mod instruction;
 mod interrupt;
+mod timer;
 mod trap;
 fn main() {
     println!("== MARV RISC-V RV32IMA EMULATOR v0.1 ==\n== written by <franzageek> ==");

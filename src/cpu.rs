@@ -1,6 +1,7 @@
 use crate::decode;
 use crate::extensions::Execute;
 use crate::interrupt;
+use crate::timer;
 use crate::trap;
 use crate::instruction::*;
 use colored::Colorize;
@@ -154,7 +155,7 @@ impl RV32Memory {
     pub fn read_word(&mut self, address: usize) -> u32 {
         return u32::from_le_bytes([self.ram[address], self.ram[address+1], self.ram[address+2], self.ram[address+3]]);
     }
-
+    
     pub fn write_word(&mut self, address: usize, word: u32) {
         self.ram[address] = (word & 0xFF) as u8;
         self.ram[address+1] = ((word >> 8) & 0xFF) as u8;
@@ -162,6 +163,23 @@ impl RV32Memory {
         self.ram[address+3] = ((word >> 24) & 0xFF) as u8;
         return;
     }
+
+    pub fn read_double_word(&mut self, address: usize) -> u64 {
+        return u64::from_le_bytes([self.ram[address], self.ram[address+1], self.ram[address+2], self.ram[address+3], self.ram[address+4], self.ram[address+5], self.ram[address+6], self.ram[address+7]]);
+    }
+
+    pub fn write_double_word(&mut self, address: usize, double: u64) {
+        self.ram[address] = (double & 0xFF) as u8;
+        self.ram[address+1] = ((double >> 8) & 0xFF) as u8;
+        self.ram[address+2] = ((double >> 16) & 0xFF) as u8;
+        self.ram[address+3] = ((double >> 24) & 0xFF) as u8;
+        self.ram[address+4] = ((double >> 32) & 0xFF) as u8;
+        self.ram[address+5] = ((double >> 40) & 0xFF) as u8;
+        self.ram[address+6] = ((double >> 48) & 0xFF) as u8;
+        self.ram[address+7] = ((double >> 56) & 0xFF) as u8;
+        return;
+    }
+
 }
 
 #[allow(dead_code)]
@@ -344,6 +362,7 @@ impl RiscV32 {
                 },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
+            timer::update(self);
             interrupt::check(self);
         }
     }
