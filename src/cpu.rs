@@ -1,5 +1,6 @@
 use crate::decode;
 use crate::extensions::Execute;
+use crate::interrupt;
 use crate::trap;
 use crate::instruction::*;
 use colored::Colorize;
@@ -343,6 +344,7 @@ impl RiscV32 {
                 },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
+            interrupt::check(self);
         }
     }
 }
