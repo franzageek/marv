@@ -3,6 +3,7 @@ use crate::extensions::Execute;
 use crate::interrupt;
 use crate::timer;
 use crate::trap;
+use crate::uart::UART;
 use crate::instruction::*;
 use colored::Colorize;
 use std::io::Write;
@@ -58,6 +59,7 @@ pub struct RV32Memory {
 pub struct RiscV32 {
     pub regs: RV32Regs,
     pub mem: RV32Memory,
+    pub uart: UART,
     pub privilege: u8, // 0 = user, 1 = supervisor, 3 = machine
     pub status: bool
 }
@@ -188,6 +190,7 @@ impl RiscV32 {
         return RiscV32 {
             regs: RV32Regs::new(),
             mem: RV32Memory::new(),
+            uart: UART::new(),
             privilege: 0, // user mode
             status: false
         };
@@ -213,6 +216,9 @@ impl RiscV32 {
         print!("setting hardware thread ID...");
         self.regs.csr.mhartid = 0;
         println!("{}", "done".green());
+        print!("resetting UART...");
+        self.uart.reset();
+        println!("{}, TX line is empty, transmitter is empty", "done".green());
         println!("{}", "successful RV32 processor reset".on_truecolor(0, 100, 0));
     }
     fn check_privilege(&self, csr: u16) -> bool { // [ ] give names to these constants

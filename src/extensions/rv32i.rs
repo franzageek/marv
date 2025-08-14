@@ -119,11 +119,17 @@ impl Execute for RV32IInstruction {
                     cpu.regs.pc.wrapping_add(4)
                 );
                 cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                if cpu.regs.pc & 0x3 != 0 {
+                    return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                }
                 return None;
             },
             RV32IInstruction::Jalr(rd, rs1, imm) => {
                 let t: u32 = cpu.regs.pc.wrapping_add(4);
-                cpu.regs.pc = cpu.regs.read(rs1).wrapping_add_signed(imm) & !1;
+                cpu.regs.pc = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if cpu.regs.pc & 0x3 != 0 {
+                    return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                }
                 cpu.regs.write(
                     if rd == 0 {
                         1
@@ -137,36 +143,54 @@ impl Execute for RV32IInstruction {
             RV32IInstruction::Beq(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) == cpu.regs.read(rs2) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },
             RV32IInstruction::Bne(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) != cpu.regs.read(rs2) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },
             RV32IInstruction::Blt(rs1, rs2, imm) => {
                 if (cpu.regs.read(rs1) as i32) < (cpu.regs.read(rs2) as i32) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },
             RV32IInstruction::Bge(rs1, rs2, imm) => {
                 if (cpu.regs.read(rs1) as i32) >= (cpu.regs.read(rs2) as i32) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },
             RV32IInstruction::Bltu(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) < cpu.regs.read(rs2) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },
             RV32IInstruction::Bgeu(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) >= cpu.regs.read(rs2) {
                     cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    if cpu.regs.pc & 0x3 != 0 {
+                        return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
+                    }
                 }
                 return None;
             },

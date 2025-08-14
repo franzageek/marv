@@ -10,7 +10,7 @@ pub fn check(cpu: &mut cpu::RiscV32) {
             cpu.regs.csr.mcause = (1 << 31) | (1 << i); // set cause and interrupt bits (1 << 31) and (1 << i) of MCAUSE
             cpu.regs.csr.mtval = 0; // set MTVAL to 0
             cpu.regs.csr.mstatus &= !((3 << 11) | (1 << 7) | (1 << 3)); // clear MPP and MPIE, then set MIE to 0
-            cpu.regs.csr.mstatus |= ((cpu.privilege & 0x3) << 11) as u32; // set MPP to current privilege level
+            cpu.regs.csr.mstatus |= (((cpu.privilege & 0x3) as u32) << 11) as u32; // set MPP to current privilege level
             let mie: u8 = ((cpu.regs.csr.mstatus >> 3) & 0x1) as u8; // get field MIE of mstatus
             cpu.regs.csr.mstatus |= (mie << 7) as u32; // set MPIE to previous value of MIE
             cpu.privilege = 3; // set privilege to M-mode
@@ -21,7 +21,7 @@ pub fn check(cpu: &mut cpu::RiscV32) {
             cpu.regs.csr.scause = (1 << 31) | (1 << i);
             cpu.regs.csr.stval = 0;
             cpu.regs.csr.sstatus &= !((1 << 8) | (1 << 5) | (1 << 1));
-            cpu.regs.csr.sstatus |= ((cpu.privilege & 0x1) << 8) as u32;
+            cpu.regs.csr.sstatus |= (((cpu.privilege & 0x1) as u32) << 8) as u32;
             let sie: u8 = ((cpu.regs.csr.sstatus >> 1) & 0x1) as u8;
             cpu.regs.csr.sstatus |= (sie << 5) as u32;
             cpu.privilege = 1;
