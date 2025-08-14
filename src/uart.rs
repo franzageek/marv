@@ -6,11 +6,14 @@ pub struct UART {
     pub fifo: VecDeque<u8>,
 }
 
-const UART_BASE: usize = 0x1000_0000;
-const UART_THR: usize = UART_BASE + 0x00;
-const UART_RBR: usize = UART_BASE + 0x00;
-const UART_LSR: usize = UART_BASE + 0x05;
-const UART_END: usize = UART_BASE + 0x07;
+pub const UART_BASE: u32 = 0x1000_0000;
+pub const UART_THR: u32 = UART_BASE + 0x00;
+pub const UART_RBR: u32 = UART_BASE + 0x00;
+pub const UART_LSR: u32 = UART_BASE + 0x05;
+pub const UART_END: u32 = UART_BASE + 0x07;
+
+const THRE_TEMT: u8 = (1 << 6) | (1 << 5);
+const DR: u8 = 1 << 0;
 
 pub fn match_addr(address: u32) -> bool {
    return address >= (UART_BASE as u32) && address <= (UART_END as u32);
@@ -30,15 +33,15 @@ impl UART {
         self.fifo.reserve(16);
     }
     pub fn read(&mut self, address: u32) -> Option<u8> {
-        match address as usize {
+        match address {
             UART_RBR => {
-                if self.lsr & 0x1 != 0 {
+                if self.lsr & DR != 0 {
                     let data: u8 = self.rxtx;
                     if self.fifo.len() > 0 {
                         self.rxtx = self.fifo.pop_front().unwrap();
                     } else {
-                        self.lsr &= !0x1; // clear data ready bit
-                        self.lsr |= 1 << 5; // set transmitter holding register empty
+                        self.lsr &= !DR; // clear data ready bit
+                        self.lsr |= THRE_TEMT; // set transmitter holding register empty
                     }
                     return Some(data);
                 }
@@ -49,15 +52,15 @@ impl UART {
         }
     }
     pub fn write(&mut self, address: u32, data: u8) {
-        match address as usize {
+        match address {
             UART_THR => {
-                if self.lsr & (1 << 5) != 0  {
+                if self.lsr & THRE_TEMT != 0  {
                     self.rxtx = data;
-                    self.lsr &= !(1 << 5); // clear transmitter holding register empty bit
+                    self.lsr &= !THRE_TEMT; // clear transmitter holding register empty bit
                 } else {
                     self.fifo.push_back(data);
                 }
-                self.lsr |= 0x1; // set data ready bit
+                self.lsr |= DR; // set data ready bit
             },
             _ => {},
         }

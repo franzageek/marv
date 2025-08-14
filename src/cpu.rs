@@ -3,9 +3,11 @@ use crate::extensions::Execute;
 use crate::interrupt;
 use crate::timer;
 use crate::trap;
+use crate::uart;
 use crate::uart::UART;
 use crate::instruction::*;
 use colored::Colorize;
+use console::Term;
 use std::io::Write;
 
 #[allow(dead_code)]
@@ -356,8 +358,13 @@ impl RiscV32 {
         return Some(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc));
     }
     pub fn execute(&mut self) {
-        while self.status {
-            let instr: u32 = self.mem.read_word(self.regs.pc as usize);
+        let stdout: Term = console::Term::buffered_stdout();
+        'exec_loop: while self.status {
+            if let Ok(c) = stdout.read_char() {
+                self.uart.write(uart::UART_THR, c as u8);
+                crate::io::output_to_screen(self);
+            }
+            /*let instr: u32 = self.mem.read_word(self.regs.pc as usize);
             let decoded: RV32Instruction = decode::rv32_decode(instr);
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded.execute(self) {
@@ -369,7 +376,7 @@ impl RiscV32 {
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
             timer::update(self);
-            interrupt::check(self);
+            interrupt::check(self);*/
         }
     }
 }

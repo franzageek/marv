@@ -3,6 +3,7 @@ mod decode;
 mod extensions;
 mod instruction;
 mod interrupt;
+mod io;
 mod timer;
 mod trap;
 mod uart;
