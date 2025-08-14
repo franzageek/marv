@@ -1,4 +1,4 @@
-use crate::cpu;
+use crate::{cpu, uart};
 use crate::extensions::Execute;
 use crate::trap;
 
@@ -196,13 +196,21 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Lb(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
-                let ubyte: u8 = cpu.mem.read_byte(address as usize);
+                let mut ubyte: u8 = cpu.mem.read_byte(address as usize);
+                if uart::match_addr(address) {
+                    if let Some(data) = cpu.uart.read(address) {
+                        ubyte = data;
+                    }
+                }
                 let idata: i32 = ((ubyte as i32) << 24) >> 24;
                 cpu.regs.write(rd, idata as u32);
                 return None;
             },
             RV32IInstruction::Lh(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
+                }
                 let uhalf: u16 = cpu.mem.read_half_word(address as usize);
                 let idata: i32 = ((uhalf as i32) << 16) >> 16;
                 cpu.regs.write(rd, idata as u32);
@@ -210,18 +218,32 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Lw(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
+                }
                 let udata: u32 = cpu.mem.read_word(address as usize);
                 cpu.regs.write(rd, udata);
                 return None;
             },
             RV32IInstruction::Lbu(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
-                let ubyte: u8 = cpu.mem.read_byte(address as usize);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
+                }
+                let mut ubyte: u8 = cpu.mem.read_byte(address as usize);
+                if uart::match_addr(address) {
+                    if let Some(data) = cpu.uart.read(address) {
+                        ubyte = data;
+                    }
+                }
                 cpu.regs.write(rd, (ubyte as u32) & !0xFF);
                 return None;
             },
             RV32IInstruction::Lhu(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
+                }
                 let uhalf: u16 = cpu.mem.read_half_word(address as usize);
                 cpu.regs.write(rd, (uhalf as u32) & !0xFFFF);
                 return None;
@@ -229,17 +251,27 @@ impl Execute for RV32IInstruction {
             RV32IInstruction::Sb(rs1, rs2, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
                 let byte: u8 = (cpu.regs.read(rs2) & 0xFF) as u8;
-                cpu.mem.write_byte(address as usize, byte);
+                if uart::match_addr(address) {
+                    cpu.uart.write(address, byte);
+                } else {
+                    cpu.mem.write_byte(address as usize, byte);
+                }
                 return None;
             },
             RV32IInstruction::Sh(rs1, rs2, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::StoreAccessFault, cpu, cpu.regs.pc));
+                }
                 let half: u16 = (cpu.regs.read(rs2) & 0xFFFF) as u16;
                 cpu.mem.write_half_word(address as usize, half);
                 return None;
             },
             RV32IInstruction::Sw(rs1, rs2, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                if uart::match_addr(address) {
+                    return Some(trap::Trap::take(trap::Trap::StoreAccessFault, cpu, cpu.regs.pc));
+                }
                 cpu.mem.write_word(address as usize, cpu.regs.read(rs2));
                 return None;
             },
