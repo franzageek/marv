@@ -1,3 +1,4 @@
+mod bootloader;
 mod cpu;
 mod decode;
 mod extensions;
