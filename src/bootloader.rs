@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use colored::Colorize;
 
-use crate::cpu;
+use crate::{cpu, timer};
 
 pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
     let mut f = std::fs::File::open(&filename).expect("no devicetree blob found");
@@ -12,7 +12,7 @@ pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
     let len: usize = cpu.mem.ram.len();
     let start_addr: usize = ((len as u64 - metadata.len()) - 0x1000) as usize;
     let end_addr: usize = (len - 0x1000) as usize;
-    print!("{} -- RISC-V Linux Loader for MARV32IMA, v0.1 --", "[rvll]".purple());
+    println!("{} -- RISC-V Linux Loader for MARV32IMA, v0.1 --", "[rvll]".purple());
     print!("{} loading devicetree blob at 0x{:08X}->0x{:08X}...", "[rvll]".purple(), start_addr, end_addr);
     std::io::stdout().flush().unwrap();
     unsafe {
@@ -30,4 +30,12 @@ pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
     print!("{} loading devicetree blob address (0x{:08X}) into x11 (a1)...", "[rvll]".purple(), start_addr);
     cpu.regs.x[11] = start_addr as u32;
     println!("{}", "done".green());
+    print!("{} resetting timer...", "[rvll]".purple());
+    cpu.mem.write_double_word(timer::CLINT_MTIMECMP, 0xFFFFFFFF_FFFFFFFF);
+    let mut data: u64 = cpu.mem.read_word(timer::CLINT_MTIMECMP) as u64;
+    data <<= 32;
+    data |= cpu.mem.read_word(timer::CLINT_MTIMECMP + 4) as u64;
+    assert_eq!(data, 0xFFFFFFFF_FFFFFFFF);
+    println!("{}", "done".green());
+    
 }
