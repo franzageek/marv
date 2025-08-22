@@ -1,0 +1,68 @@
+/dts-v1/;
+
+/ {
+    compatible = "riscv,nommu-simple";
+    #address-cells = <2>;
+    #size-cells = <2>;
+
+    chosen {
+        // Make the UART the primary console and enable earlycon
+        stdout-path = &serial0;
+        bootargs = "console=ttyS0,115200 earlycon";
+    };
+
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        timebase-frequency = <10000000>;  // 10 MHz tick for CLINT 'mtime'
+
+        CPU0: cpu@0 {
+            device_type = "cpu";
+            reg = <0>;
+            // Set to match what your emulator exposes:
+            riscv,isa = "rv32ima";
+            // No MMU for your setup
+            mmu-type = "none";
+
+            // Local interrupt controller node (required for CLINT bindings)
+            CPU0_INTC: interrupt-controller {
+                compatible = "riscv,cpu-intc";
+                interrupt-controller;
+                #interrupt-cells = <1>;
+            };
+        };
+    };
+
+    memory@8000000 {
+        device_type = "memory";
+        reg = <0x0 0x08000000  0x0 0x20000000>;  // base=0x0800_0000, size=512MiB
+    };
+
+    soc {
+        compatible = "simple-bus";
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        /* CLINT: MSIP/MTIMECMP/MTIME (one hart, hartid=0) */
+        clint@2000000 {
+            compatible = "riscv,clint0";
+            reg = <0x0 0x02000000  0x0 0x000c0000>; // standard CLINT window
+            // Wire software and timer interrupts to the CPU-local intc.
+            // IDs below are "local interrupt IDs":
+            // 3 = MSIP (machine software), 7 = MTIP (machine timer).
+            interrupts-extended = <&CPU0_INTC 3 &CPU0_INTC 7>;
+        };
+
+        /* 16550 UART on byte registers, contiguous offsets 0..7 */
+        serial0: serial@10000000 {
+            compatible = "ns16550a";
+            reg = <0x0 0x10000000  0x0 0x100>;
+            clock-frequency = <50000000>;
+            current-speed   = <115200>;
+            reg-io-width = <1>;  // 8-bit registers
+            reg-shift    = <0>;  // byte stride: base+0..7
+            // No 'interrupts' property => polled mode (fine for early console)
+        };
+    };
+};
