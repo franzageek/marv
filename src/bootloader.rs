@@ -4,9 +4,23 @@ use colored::Colorize;
 
 use crate::{cpu, timer};
 
-pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
-    let mut f = std::fs::File::open(&filename).expect("no devicetree blob found");
-    let metadata = std::fs::metadata(&filename).expect("unable to read devicetree blob metadata");
+pub struct BootloaderInfo {
+    pub dtb: String,
+    pub kernelimg: String,
+}
+
+impl BootloaderInfo {
+    pub fn from(dtb: String, kernelimg: String) -> BootloaderInfo {
+        BootloaderInfo {
+            dtb,
+            kernelimg,
+        }
+    }
+}
+
+pub fn rvll(cpu: &mut cpu::RiscV32, blinfo: BootloaderInfo) {
+    let mut f = std::fs::File::open(&blinfo.dtb).expect("no devicetree blob found");
+    let metadata = std::fs::metadata(&blinfo.dtb).expect("unable to read devicetree blob metadata");
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
     let len: usize = cpu.mem.ram.len();
@@ -18,7 +32,7 @@ pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
     unsafe {
         cpu.mem.ram[start_addr..end_addr].copy_from_slice(
             std::slice::from_raw_parts(
-                buffer.as_ptr(), 
+                buffer.as_ptr(),
                 metadata.len() as usize
             )
         );
@@ -37,5 +51,26 @@ pub fn rvll(cpu: &mut cpu::RiscV32, filename: &String) {
     data |= cpu.mem.read_word(timer::CLINT_MTIMECMP + 4) as u64;
     assert_eq!(data, 0xFFFFFFFF_FFFFFFFF);
     println!("{}", "done".green());
-    
+    f = std::fs::File::open(&blinfo.kernelimg).expect("no kernel image found");
+    let metadata = std::fs::metadata(&blinfo.kernelimg).expect("unable to read kernel image metadata");
+    buffer = vec![0; metadata.len() as usize];
+    f.read(&mut buffer).expect("buffer overflow");
+    let start_addr: usize = 0x80000000;
+    let end_addr: usize = start_addr + metadata.len() as usize;
+    print!("{} loading kernel image at 0x{:08X}->0x{:08X}...", "[rvll]".purple(), start_addr, end_addr);
+    std::io::stdout().flush().unwrap();
+    unsafe {
+        cpu.mem.ram[start_addr..end_addr].copy_from_slice(
+            std::slice::from_raw_parts(
+                buffer.as_ptr(),
+                metadata.len() as usize
+            )
+        );
+    }
+    println!("{}", "done".green());
+    print!("{} setting PC to 0x{:08X}...", "[rvll]".purple(), start_addr);
+    cpu.regs.pc = start_addr as u32;
+    println!("{}", "done".green());
+    println!("{} starting execution of kernel image...", "[rvll]".purple());
+    return;
 }
