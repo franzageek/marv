@@ -22,7 +22,7 @@ impl Execute for RV32Instruction {
             Self::RV32M(instr) => return instr.execute(cpu),
             Self::RV32A(instr) => return instr.execute(cpu),
             Self::RV32Ziscr(instr) => return instr.execute(cpu),
-            Self::TrapReturn(instr) =>return instr.execute(cpu),
+            Self::TrapReturn(instr) => return instr.execute(cpu),
         }
     }
 }

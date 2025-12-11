@@ -42,7 +42,7 @@ impl Trap {
         cpu.regs.csr.mepc = cpu.regs.pc;
         cpu.regs.csr.mcause = cause;
         cpu.regs.csr.mtval = val;
-        let sie: u8 = ((cpu.regs.csr.mstatus >> 1) & 0x1) as u8; 
+        let sie: u8 = ((cpu.regs.csr.mstatus >> 1) & 0x1) as u8;
         cpu.regs.csr.mstatus &= !((3 << 8) | (1 << 5) | (1 << 1));
         cpu.regs.csr.mstatus |= (sie << 5) as u32;
         cpu.regs.csr.mstatus |= ((cpu.privilege & 0x3) as u32) << 8;
@@ -59,11 +59,11 @@ impl Trap {
         return code;
     }
 
-    pub fn display(self/*, cpu: &cpu::RiscV32*/) {
+    pub fn display(self, cpu: &cpu::RiscV32) {
         match self { // [ ] find a way to show additional information (like mtval and privilege), maybe using enum for name and struct for data
             Trap::MisalignedInstructionAddress => eprintln!("[EXCEPTION] Misaligned instruction address"),
             Trap::InstructionAccessFault => eprintln!("[EXCEPTION] Instruction access fault"),
-            Trap::IllegalInstruction => eprintln!("[EXCEPTION] Illegal instruction"),
+            Trap::IllegalInstruction => eprintln!("[EXCEPTION] Illegal instruction at PC: [0x{:08X}]", if cpu.privilege == 3 { cpu.regs.csr.mepc } else { cpu.regs.csr.sepc }),
             Trap::Breakpoint => eprintln!("[EXCEPTION] Breakpoint"),
             Trap::MisalignedLoadAddr => eprintln!("[EXCEPTION] Misaligned load address"),
             Trap::LoadAccessFault => eprintln!("[EXCEPTION] Load access fault"),

@@ -158,7 +158,7 @@ impl RV32Memory {
     pub fn read_word(&mut self, address: usize) -> u32 {
         return u32::from_le_bytes([self.ram[address], self.ram[address+1], self.ram[address+2], self.ram[address+3]]);
     }
-    
+
     pub fn write_word(&mut self, address: usize, word: u32) {
         self.ram[address] = (word & 0xFF) as u8;
         self.ram[address+1] = ((word >> 8) & 0xFF) as u8;
@@ -232,7 +232,7 @@ impl RiscV32 {
             csr == 0x105 ||
             csr == 0x106 ||
             csr == 0x10A ||
-            csr == 0x120 || 
+            csr == 0x120 ||
             (
                 csr >= 0x140 &&
                 csr <= 0x144
@@ -248,7 +248,7 @@ impl RiscV32 {
             return true;
         }
         if self.privilege == 3 && (
-            ( 
+            (
                 csr >= 0xF11 &&
                 csr <= 0xF15
             ) ||
@@ -312,6 +312,7 @@ impl RiscV32 {
                 0x342 => return Ok(self.regs.csr.mcause),
                 0x343 => return Ok(self.regs.csr.mtval),
                 0x344 => return Ok(self.regs.csr.mip),
+                0x3A0..=0x3EF => return Ok(0), // implementation specific CSRs
                 _ => return Err(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc)),
             }
         }
@@ -337,7 +338,10 @@ impl RiscV32 {
                 0x143 => self.regs.csr.stval = data,
                 0x144 => self.regs.csr.sip = data,
                 0x180 => self.regs.csr.satp = data,
+                0xF11 => self.regs.csr.mvendorid = data,
+                0xF12 => self.regs.csr.marchid = data,
                 0xF13 => self.regs.csr.mimpid = data,
+                0xF14 => self.regs.csr.mhartid = data,
                 0x300 => self.regs.csr.mstatus = data,
                 0x301 => self.regs.csr.misa = data,
                 0x302 => self.regs.csr.medeleg = data,
@@ -350,6 +354,7 @@ impl RiscV32 {
                 0x342 => self.regs.csr.mcause = data,
                 0x343 => self.regs.csr.mtval = data,
                 0x344 => self.regs.csr.mip = data,
+                0x3A0..=0x3EF => {}, // implementation specific CSRs
                 _ => return Some(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc)),
             }
             return None;
@@ -369,7 +374,8 @@ impl RiscV32 {
             match decoded.execute(self) {
                 None => {},
                 Some(trap) => {
-                    trap.display();
+                    trap.display(self);
+                    //Trap::take(trap, self, 0);
                     panic!("Emulation halted"); // [ ] display some data like regs, memory
                 },
             }

@@ -106,7 +106,7 @@ impl Execute for RV32IInstruction {
                 return None;
             },
             RV32IInstruction::Auipc(rd, imm) => {
-                cpu.regs.write(rd, cpu.regs.pc.wrapping_add_signed(imm));
+                cpu.regs.write(rd, cpu.regs.pc.wrapping_add_signed(imm-4)); // PC is updated right after - sure with branch instructions, further investigation required for loads
                 return None;
             },
             RV32IInstruction::Jal(rd, imm) => {
@@ -116,9 +116,9 @@ impl Execute for RV32IInstruction {
                     } else {
                         rd
                     },
-                    cpu.regs.pc.wrapping_add(4)
+                    cpu.regs.pc.wrapping_add(4) // PC is updated right after - sure with branch instructions, further investigation required for jumps
                 );
-                cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                 if cpu.regs.pc & 0x3 != 0 {
                     return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                 }
@@ -126,7 +126,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Jalr(rd, rs1, imm) => {
                 let t: u32 = cpu.regs.pc.wrapping_add(4);
-                cpu.regs.pc = cpu.regs.read(rs1).wrapping_add_signed(imm);
+                cpu.regs.pc = cpu.regs.read(rs1).wrapping_add_signed(imm-4);
                 if cpu.regs.pc & 0x3 != 0 {
                     return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                 }
@@ -138,11 +138,12 @@ impl Execute for RV32IInstruction {
                     },
                     t
                 );
+                //println!("{:08X} {}", cpu.regs.x[rs1 as usize], imm);
                 return None;
             },
             RV32IInstruction::Beq(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) == cpu.regs.read(rs2) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4); // cause PC gets updated right after
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -151,7 +152,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Bne(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) != cpu.regs.read(rs2) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -160,7 +161,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Blt(rs1, rs2, imm) => {
                 if (cpu.regs.read(rs1) as i32) < (cpu.regs.read(rs2) as i32) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -169,7 +170,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Bge(rs1, rs2, imm) => {
                 if (cpu.regs.read(rs1) as i32) >= (cpu.regs.read(rs2) as i32) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -178,7 +179,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Bltu(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) < cpu.regs.read(rs2) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -187,7 +188,7 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Bgeu(rs1, rs2, imm) => {
                 if cpu.regs.read(rs1) >= cpu.regs.read(rs2) {
-                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm);
+                    cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                     if cpu.regs.pc & 0x3 != 0 {
                         return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                     }
@@ -278,6 +279,7 @@ impl Execute for RV32IInstruction {
             RV32IInstruction::Addi(rd, rs1, imm) => {
                 let data: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
                 cpu.regs.write(rd, data);
+                //println!("{rd} -> {}", cpu.regs.x[12]);
                 return None;
             },
             RV32IInstruction::Slti(rd, rs1, imm) => {
@@ -385,7 +387,21 @@ impl Execute for RV32IInstruction {
                 cpu.regs.write(rd, data);
                 return None;
             },
-            _ => panic!("Unimplmemented instruction"),
+            RV32IInstruction::Fence(_, _, _, _, _) => return None,
+            RV32IInstruction::FenceTSO => return None,
+            RV32IInstruction::Pause => return None,
+            RV32IInstruction::Ecall => {
+                match cpu.privilege {
+                    0 => return Some(trap::Trap::take(trap::Trap::UModeEnvCall, cpu, cpu.regs.pc)),
+                    1 => return Some(trap::Trap::take(trap::Trap::SModeEnvCall, cpu, cpu.regs.pc)),
+                    3 => return Some(trap::Trap::take(trap::Trap::MModeEnvCall, cpu, cpu.regs.pc)),
+                    _ => return Some(trap::Trap::take(trap::Trap::IllegalInstruction, cpu, cpu.regs.pc)),
+                }
+            },
+            RV32IInstruction::Ebreak => {
+                return Some(trap::Trap::take(trap::Trap::Breakpoint, cpu, cpu.regs.pc));
+            },
+            //_ => panic!("Unimplmemented instruction"),
         }
     }
 }
