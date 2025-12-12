@@ -228,9 +228,6 @@ impl Execute for RV32IInstruction {
             },
             RV32IInstruction::Lbu(rd, rs1, imm) => {
                 let address: u32 = cpu.regs.read(rs1).wrapping_add_signed(imm);
-                if uart::match_addr(address) {
-                    return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
-                }
                 let mut ubyte: u8 = cpu.mem.read_byte(address as usize);
                 if uart::match_addr(address) {
                     if let Some(data) = cpu.uart.read(address) {
