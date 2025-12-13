@@ -39,8 +39,7 @@ impl KbdIn {
         let data: Option<u8>;
         match self.stdin.lock().read(&mut self.buf) {
             Ok(1) => data = Some(self.buf[0]),
-            Err(e) 
-                if e.kind() == std::io::ErrorKind::WouldBlock => data = None, // no data available this cycle
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => data = None, // no data available this cycle
             Err(e) => panic!("error reading stdin: {:?}", e),
             _ => data = None, // no data
         }
@@ -50,8 +49,8 @@ impl KbdIn {
 }
 
 pub fn output_to_screen(cpu: &mut cpu::RiscV32) {
-    print!("{}", cpu.uart.read(uart::UART_THR).unwrap() as char);
+    while let Some(c) = cpu.uart.read(uart::UART_THR) {
+        print!("{}", c as char);
+    }
     std::io::stdout().flush().unwrap();
 }
-
-

@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 pub struct UART {
     pub rxtx: u8,
     pub lsr: u8,
-    pub fifo: VecDeque<u8>,
+    pub fifo: VecDeque<u8>, // disable FIFO
 }
 
 pub const UART_BASE: u32 = 0x1000_0000;
@@ -24,13 +24,13 @@ impl UART {
         return UART {
             rxtx: 0,
             lsr: 0,
-            fifo: VecDeque::with_capacity(0),
+            fifo: VecDeque::with_capacity(0), // disable FIFO
         };
     }
     pub fn reset(&mut self) {
         self.rxtx = 0;
-        self.lsr = 0x60; // transmitter holding register empty, data holding register empty
-        self.fifo.reserve(16);
+        self.lsr = THRE_TEMT; // transmitter holding register empty, data holding register empty
+        self.fifo.reserve(16); // disable FIFO
     }
     pub fn read(&mut self, address: u32) -> Option<u8> {
         match address {
@@ -43,8 +43,11 @@ impl UART {
                         self.lsr &= !DR; // clear data ready bit
                         self.lsr |= THRE_TEMT; // set transmitter holding register empty
                     }
+                    //self.lsr &= !DR; // clear data ready bit
+                    //self.lsr |= THRE_TEMT; // set transmitter holding register empty
                     return Some(data);
                 }
+
                 return None; // no data ready
             },
             UART_LSR => return Some(self.lsr),
@@ -59,7 +62,7 @@ impl UART {
                     self.lsr &= !THRE_TEMT; // clear transmitter holding register empty bit
                 } else {
                     self.fifo.push_back(data);
-                }
+                } // disable FIFO
                 self.lsr |= DR; // set data ready bit
             },
             _ => {},
