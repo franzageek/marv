@@ -1,6 +1,8 @@
 use crate::decode;
 use crate::extensions::Execute;
 use crate::interrupt;
+use crate::io;
+use crate::memory::RV32Memory;
 use crate::timer;
 use crate::trap;
 use crate::uart;
@@ -51,10 +53,6 @@ pub struct RV32Regs {
     pub x: [u32; 32],
     pub pc: u32,
     pub csr: RV32CSRs,
-}
-
-pub struct RV32Memory {
-    pub ram: Vec<u8>,
 }
 
 pub struct RiscV32 {
@@ -124,65 +122,6 @@ impl RV32Regs {
         }
         return;
     }
-}
-
-impl RV32Memory {
-    pub fn new() -> RV32Memory {
-        print!("initializing memory...");
-        let ram: Vec<u8> = vec![0u8; (1u64 << 32) as usize];
-        println!("{}, allocated {} bytes", "done".green(), ram.len().to_string().blue());
-        return RV32Memory {
-            ram: ram,
-        };
-    }
-
-    pub fn read_byte(&mut self, address: usize) -> u8 {
-        return self.ram[address];
-    }
-
-    pub fn write_byte(&mut self, address: usize, byte: u8) { // maybe use the equivalent of memcpy for write ops
-        self.ram[address] = byte;
-        return;
-    }
-
-    pub fn read_half_word(&mut self, address: usize) -> u16 {
-        return u16::from_le_bytes([self.ram[address], self.ram[address+1]]);
-    }
-
-    pub fn write_half_word(&mut self, address: usize, half: u16) {
-        self.ram[address] = (half & 0xFF) as u8;
-        self.ram[address+1] = ((half >> 8) & 0xFF) as u8;
-        return;
-    }
-
-    pub fn read_word(&mut self, address: usize) -> u32 {
-        return u32::from_le_bytes([self.ram[address], self.ram[address+1], self.ram[address+2], self.ram[address+3]]);
-    }
-
-    pub fn write_word(&mut self, address: usize, word: u32) {
-        self.ram[address] = (word & 0xFF) as u8;
-        self.ram[address+1] = ((word >> 8) & 0xFF) as u8;
-        self.ram[address+2] = ((word >> 16) & 0xFF) as u8;
-        self.ram[address+3] = ((word >> 24) & 0xFF) as u8;
-        return;
-    }
-
-    pub fn read_double_word(&mut self, address: usize) -> u64 {
-        return u64::from_le_bytes([self.ram[address], self.ram[address+1], self.ram[address+2], self.ram[address+3], self.ram[address+4], self.ram[address+5], self.ram[address+6], self.ram[address+7]]);
-    }
-
-    pub fn write_double_word(&mut self, address: usize, double: u64) {
-        self.ram[address] = (double & 0xFF) as u8;
-        self.ram[address+1] = ((double >> 8) & 0xFF) as u8;
-        self.ram[address+2] = ((double >> 16) & 0xFF) as u8;
-        self.ram[address+3] = ((double >> 24) & 0xFF) as u8;
-        self.ram[address+4] = ((double >> 32) & 0xFF) as u8;
-        self.ram[address+5] = ((double >> 40) & 0xFF) as u8;
-        self.ram[address+6] = ((double >> 48) & 0xFF) as u8;
-        self.ram[address+7] = ((double >> 56) & 0xFF) as u8;
-        return;
-    }
-
 }
 
 #[allow(dead_code)]
@@ -363,23 +302,24 @@ impl RiscV32 {
     }
     pub fn execute(&mut self) {
         let mut kbd: crate::io::KbdIn = crate::io::KbdIn::new();
+        let mut instr: u32;
+        let mut decoded: RV32Instruction;
         while self.status {
             if let Some(c) = kbd.try_read_byte() {
                 self.uart.write(uart::UART_THR, c);
-                crate::io::output_to_screen(self);
             }
-            let instr: u32 = self.mem.read_word(self.regs.pc as usize);
-            let decoded: RV32Instruction = decode::rv32_decode(instr);
+            instr = self.mem.read_word(self.regs.pc as usize);
+            decoded = decode::rv32_decode(instr);
             println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded.execute(self) {
                 None => {},
                 Some(trap) => {
                     trap.display(self);
-                    //Trap::take(trap, self, 0);
                     panic!("Emulation halted"); // [ ] display some data like regs, memory
                 },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
+            io::output_to_screen(self);
             timer::update(self);
             interrupt::check(self);
         }

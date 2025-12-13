@@ -5,6 +5,7 @@ mod extensions;
 mod instruction;
 mod interrupt;
 mod io;
+mod memory;
 mod timer;
 mod trap;
 mod uart;
