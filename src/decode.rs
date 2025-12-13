@@ -211,9 +211,9 @@ pub fn rv32_decode(instr: u32) -> RV32Instruction {
                 let iimm: i32 = ((uimm as i32) << 20) >> 20;
                 match opcode {
                     0b0100011 => match funct3 {
-                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Sb(rs2, rs1, iimm)),
-                        0b001 => return RV32Instruction::RV32I(RV32IInstruction::Sh(rs2, rs1, iimm)),
-                        0b010 => return RV32Instruction::RV32I(RV32IInstruction::Sw(rs2, rs1, iimm)),
+                        0b000 => return RV32Instruction::RV32I(RV32IInstruction::Sb(rs1, rs2, iimm)),
+                        0b001 => return RV32Instruction::RV32I(RV32IInstruction::Sh(rs1, rs2, iimm)),
+                        0b010 => return RV32Instruction::RV32I(RV32IInstruction::Sw(rs1, rs2, iimm)),
                         _ => {
                             eprintln!("Unknown S-type instruction with funct3: 0b{:03b}", funct3);
                             return RV32Instruction::Unknown;

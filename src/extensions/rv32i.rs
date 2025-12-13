@@ -234,7 +234,7 @@ impl Execute for RV32IInstruction {
                         ubyte = data;
                     }
                 }
-                cpu.regs.write(rd, (ubyte as u32) & !0xFF);
+                cpu.regs.write(rd, (ubyte as u32) & 0xFF);
                 return None;
             },
             RV32IInstruction::Lhu(rd, rs1, imm) => {
@@ -243,7 +243,7 @@ impl Execute for RV32IInstruction {
                     return Some(trap::Trap::take(trap::Trap::LoadAccessFault, cpu, cpu.regs.pc));
                 }
                 let uhalf: u16 = cpu.mem.read_half_word(address as usize);
-                cpu.regs.write(rd, (uhalf as u32) & !0xFFFF);
+                cpu.regs.write(rd, (uhalf as u32) & 0xFFFF);
                 return None;
             },
             RV32IInstruction::Sb(rs1, rs2, imm) => {
