@@ -1,9 +1,5 @@
 use std::io::Read;
-use std::io::Write;
 use std::os::fd::AsRawFd;
-
-use crate::cpu;
-use crate::uart;
 
 pub struct KbdIn {
     stdin: std::io::Stdin,
@@ -48,9 +44,9 @@ impl KbdIn {
     }
 }
 
-pub fn output_to_screen(cpu: &mut cpu::RiscV32) {
+/*pub fn output_to_screen(cpu: &mut cpu::RiscV32) {
     while let Some(c) = cpu.uart.read(uart::UART_THR) {
         print!("{}", c as char);
     }
     std::io::stdout().flush().unwrap();
-}
+}*/

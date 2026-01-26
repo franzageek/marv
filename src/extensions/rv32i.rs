@@ -110,14 +110,12 @@ impl Execute for RV32IInstruction {
                 return None;
             },
             RV32IInstruction::Jal(rd, imm) => {
-                cpu.regs.write(
-                    if rd == 0 {
-                        1
-                    } else {
-                        rd
-                    },
-                    cpu.regs.pc.wrapping_add(4) // PC is updated right after - sure with branch instructions, further investigation required for jumps
-                );
+                if rd > 0 {
+                    cpu.regs.write(
+                        rd,
+                        cpu.regs.pc.wrapping_add(4) // PC is updated right after - but needs the +4 since we do -4+4 when restoring and advancing the value
+                    );
+                }
                 cpu.regs.pc = cpu.regs.pc.wrapping_add_signed(imm-4);
                 if cpu.regs.pc & 0x3 != 0 {
                     return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
@@ -125,19 +123,14 @@ impl Execute for RV32IInstruction {
                 return None;
             },
             RV32IInstruction::Jalr(rd, rs1, imm) => {
-                let t: u32 = cpu.regs.pc.wrapping_add(4);
+                let t: u32 = cpu.regs.pc.wrapping_add(4); // PC is updated right after - but needs the +4 since we do -4+4 when restoring the value
                 cpu.regs.pc = cpu.regs.read(rs1).wrapping_add_signed(imm-4);
                 if cpu.regs.pc & 0x3 != 0 {
                     return Some(trap::Trap::take(trap::Trap::MisalignedInstructionAddress, cpu, cpu.regs.pc));
                 }
-                cpu.regs.write(
-                    if rd == 0 {
-                        1
-                    } else {
-                        rd
-                    },
-                    t
-                );
+                if rd > 0 {
+                    cpu.regs.write(rd, t);
+                }
                 //println!("{:08X} {}", cpu.regs.x[rs1 as usize], imm);
                 return None;
             },
@@ -201,6 +194,8 @@ impl Execute for RV32IInstruction {
                 if uart::match_addr(address) {
                     if let Some(data) = cpu.uart.read(address) {
                         ubyte = data;
+                    } else {
+                        ubyte = 0;
                     }
                 }
                 let idata: i32 = ((ubyte as i32) << 24) >> 24;
