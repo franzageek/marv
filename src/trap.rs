@@ -63,7 +63,7 @@ impl Trap {
         match self { // [ ] find a way to show additional information (like mtval and privilege), maybe using enum for name and struct for data
             Trap::MisalignedInstructionAddress => eprintln!("[EXCEPTION] Misaligned instruction address"),
             Trap::InstructionAccessFault => eprintln!("[EXCEPTION] Instruction access fault"),
-            Trap::IllegalInstruction => eprintln!("[EXCEPTION] Illegal instruction at PC: [0x{:08X}]", if cpu.privilege == 3 { cpu.regs.csr.mepc } else { cpu.regs.csr.sepc }),
+            Trap::IllegalInstruction => eprintln!("[EXCEPTION] Illegal instruction at PC: [0x{:08X}]\n{}", if cpu.privilege == 3 { cpu.regs.csr.mepc } else { cpu.regs.csr.sepc }, cpu),
             Trap::Breakpoint => eprintln!("[EXCEPTION] Breakpoint"),
             Trap::MisalignedLoadAddr => eprintln!("[EXCEPTION] Misaligned load address"),
             Trap::LoadAccessFault => eprintln!("[EXCEPTION] Load access fault"),

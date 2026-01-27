@@ -1,13 +1,12 @@
 use crate::decode;
 use crate::extensions::Execute;
 use crate::interrupt;
-use crate::io;
 use crate::memory::RV32Memory;
 use crate::timer;
 use crate::trap;
-use crate::uart;
 use crate::uart::UART;
 use crate::instruction::*;
+use std::fmt;
 use colored::Colorize;
 use std::io::Write;
 
@@ -121,6 +120,14 @@ impl RV32Regs {
             self.x[reg as usize] = data;
         }
         return;
+    }
+}
+impl std::fmt::Display for RV32Regs {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+            "\npc:[0x{:08X}]\n(x1|ra):[0x{:08X}] (x2|sp):[0x{:08X}] (x3|gp):[0x{:08X}] (x4|tp):[0x{:08X}]\n(x5|t0):[0x{:08X}] (x6|t1):[0x{:08X}] (x7|t2):[0x{:08X}]\n(x8|s0):[0x{:08X}] (x9|s1):[0x{:08X}]\n(x10|a0):[0x{:08X}] (x11|a1):[0x{:08X}] (x12|a2):[0x{:08X}] (x13|a3):[0x{:08X}]\n(x14|a4):[0x{:08X}] (x15|a5):[0x{:08X}] (x16|a6):[0x{:08X}] (x17|a7):[0x{:08X}]\n(x18|s2):[0x{:08X}] (x19|s3):[0x{:08X}] (x20|s4):[0x{:08X}] (x21|s5):[0x{:08X}] (x22|s6):[0x{:08X}]\n(x23|s7):[0x{:08X}] (x24|s8):[0x{:08X}] (x25|s9):[0x{:08X}] (x26|s10):[0x{:08X}] (x27|s11):[0x{:08X}]\n(x28|t3):[0x{:08X}] (x29|t4):[0x{:08X}] (x30|t5):[0x{:08X}] (x31|t6):[0x{:08X}]",
+            self.pc, self.x[1], self.x[2], self.x[3], self.x[4], self.x[5], self.x[6], self.x[7], self.x[8], self.x[9], self.x[10], self.x[11], self.x[12], self.x[13], self.x[14], self.x[15], self.x[16], self.x[17], self.x[18], self.x[19], self.x[20], self.x[21], self.x[22], self.x[23], self.x[24], self.x[25], self.x[26], self.x[27], self.x[28], self.x[29], self.x[30], self.x[31]
+        )
     }
 }
 
@@ -300,17 +307,18 @@ impl RiscV32 {
         }
         return Some(trap::Trap::take(trap::Trap::IllegalInstruction, self, self.regs.pc));
     }
+
     pub fn execute(&mut self) {
-        let mut kbd: crate::io::KbdIn = crate::io::KbdIn::new();
         let mut instr: u32;
         let mut decoded: RV32Instruction;
         while self.status {
-            if let Some(c) = kbd.try_read_byte() {
+            /*if let Some(c) = kbd.try_read_byte() {
                 self.uart.write(uart::UART_THR, c);
-            }
+            }*/
             instr = self.mem.read_word(self.regs.pc as usize);
             decoded = decode::rv32_decode(instr);
-            println!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
+            //self.uart.kbd.try_read_byte();
+            //eprintln!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded.execute(self) {
                 None => {},
                 Some(trap) => {
@@ -319,9 +327,15 @@ impl RiscV32 {
                 },
             }
             self.regs.pc = self.regs.pc.wrapping_add(4);
-            io::output_to_screen(self);
+            //io::output_to_screen(self);
             timer::update(self);
             interrupt::check(self);
         }
+    }
+}
+
+impl std::fmt::Display for RiscV32 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "privilege level: {}\nregs: {{ {}\n}}", self.privilege, self.regs)
     }
 }
