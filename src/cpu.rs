@@ -318,7 +318,7 @@ impl RiscV32 {
             instr = self.mem.read_word(self.regs.pc as usize);
             decoded = decode::rv32_decode(instr);
             //self.uart.kbd.try_read_byte();
-            //eprintln!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
+            eprintln!("[0x{:08X}]:<0x{:08X}> | got {:?}", self.regs.pc, instr, decoded);
             match decoded.execute(self) {
                 None => {},
                 Some(trap) => {
