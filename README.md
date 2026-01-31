@@ -9,4 +9,4 @@ Current roadmap:<br>
   [x] executes basic assembly<br>
   [x] prints stuff to the screen<br>
   [ ] runs linux<br>
-  [ ] implements floatsv
+  [ ] implements floats
